@@ -83,7 +83,9 @@ export class Recherche implements OnInit {
     this.categorie.set(qp.get('categorie') ?? '');
     this.texte.set(qp.get('q') ?? '');
     if (qp.get('vue') === 'carte') this.vue.set('carte');
-    this.position.demander().then(() => this.charger());
+    // Liste affichée tout de suite (position par défaut), puis rechargée si le navigateur donne la position.
+    this.charger();
+    this.position.demander().then((trouvee) => { if (trouvee) this.charger(); });
 
     const question = qp.get('assistant');
     if (question) { this.question.set(question); this.demander(); }

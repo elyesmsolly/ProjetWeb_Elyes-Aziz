@@ -9,12 +9,15 @@ export class PositionService {
   readonly coords = signal<{ lat: number; lng: number } | null>(null);
   readonly defaut = { lat: 36.8625, lng: 10.1956 };
 
-  demander(): Promise<void> {
+  /** Résout true si une nouvelle position a été obtenue. Ne bloque jamais : si l'utilisateur ne répond pas
+   *  à la demande d'autorisation (Safari, Firefox), on abandonne au bout de 6 s. */
+  demander(): Promise<boolean> {
     return new Promise((resolve) => {
-      if (!('geolocation' in navigator)) return resolve();
+      if (!('geolocation' in navigator)) return resolve(false);
+      const abandon = setTimeout(() => resolve(false), 6000);
       navigator.geolocation.getCurrentPosition(
-        (p) => { this.coords.set({ lat: p.coords.latitude, lng: p.coords.longitude }); resolve(); },
-        () => resolve(),
+        (p) => { clearTimeout(abandon); this.coords.set({ lat: p.coords.latitude, lng: p.coords.longitude }); resolve(true); },
+        () => { clearTimeout(abandon); resolve(false); },
         { timeout: 4000, maximumAge: 300000 },
       );
     });

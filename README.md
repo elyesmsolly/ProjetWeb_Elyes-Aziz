@@ -201,7 +201,17 @@ Mesures appliquées :
 - **Accessibilité :** balises sémantiques (`header`, `nav`, `main`, `footer`), contrastes vérifiés, libellés sur tous les champs, `aria-live` sur le ticket, navigation au clavier, `prefers-reduced-motion` respecté.
 
 ### Navigateurs
-Testé sur Chrome (Chromium). À vérifier avant le rendu : Firefox, Edge et Safari (sur Mac). Le site n'utilise que des API standard (WebSocket, Fetch, CSS Grid), prises en charge par ces quatre navigateurs.
+| Navigateur | Moteur | Résultat |
+|---|---|---|
+| Chrome | Chromium (Blink) | Toutes les pages, prise de ticket, appel en direct, glisser-déposer : OK |
+| Edge | Chromium (Blink), le même moteur que Chrome | OK par équivalence de moteur |
+| Safari | WebKit (testé avec WebKitGTK 2.52 et WebDriver) | Toutes les pages, prise de ticket et appel en direct par WebSocket : OK |
+| Firefox | Gecko | À vérifier à la main avant le rendu |
+
+Le test WebKit a révélé un bug, corrigé depuis : si le visiteur ne répondait pas à la demande de localisation, la liste de la recherche restait vide. Elle s'affiche maintenant tout de suite avec la position par défaut, puis se met à jour si la position arrive.
+
+### Suivi des tâches
+Les tâches sont suivies dans les [Issues GitHub](https://github.com/elyesmsolly/ProjetWeb_Elyes-Aziz/issues?q=is%3Aissue), une par fonctionnalité, avec le responsable et la branche.
 
 ---
 
@@ -219,3 +229,4 @@ Chaque fonctionnalité a été développée sur sa propre branche, puis fusionn�
 | `feature/constructeur-formulaire` | Formulaire en glisser-déposer, inscription du gérant en 5 étapes |
 | `docs/readme` | Ce README |
 | `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
+| `fix/recherche-localisation` | Recherche affichée même sans réponse à la demande de localisation |
