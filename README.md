@@ -19,7 +19,7 @@ Réalisé par **Med Elyes Msolly** et **Med Aziz Ghazouani**.
 | Carte | **Leaflet** + OpenStreetMap | Carte des établissements et choix de l'adresse à l'inscription. |
 | Back | **Spring Boot 4** (Web, Data JPA, Security, OAuth2 Resource Server, WebSocket, Validation), **Java 21** | API REST minimale mais robuste : JPA pour la base, Spring Security pour les rôles. |
 | Base | **PostgreSQL** (ou H2 en mémoire avec le profil `demo`) | Relationnelle, transactions et verrous pour éviter deux tickets avec le même numéro. |
-| Assistant | **API Claude** (SDK officiel `anthropic-java`) | Comprend une demande en langage naturel. Sans clé, une analyse locale prend le relais. |
+| Recherche avec l'IA | **Google Gemini** (offre gratuite, API REST) ou **API Claude** (SDK officiel `anthropic-java`) | Comprend une phrase entière (« je veux boire quelque chose »). Sans clé, une analyse locale par mots-clés prend le relais. |
 
 Tout tourne en local, sans déploiement.
 
@@ -37,14 +37,15 @@ Tout tourne en local, sans déploiement.
   - filtres par catégorie, « ouvert maintenant », attente < 20 min, < 1 km et note 4+ ;
   - tri, vue liste ou carte ;
   - temps d'attente mis à jour en direct ;
-  - la recherche libre devine la catégorie (« coiffeur » → barbiers) puis garde les établissements qui correspondent le mieux aux autres mots ;
+  - un seul champ et **deux boutons** : « Rechercher » (recherche normale, sans IA) et « Rechercher avec l'IA » ; le client choisit ;
+  - la recherche normale devine la catégorie (« coiffure » → barbiers et coiffure femme, « barbe » → barbiers) puis garde les établissements qui correspondent le mieux aux autres mots ;
   - les catégories « Autres » créées par les gérants (ex. Pressing) apparaissent comme filtres.
 - **Carte** (OpenStreetMap + Leaflet, gratuit, sans clé) : bouton plein écran, touche Échap pour fermer.
-- **Assistant de recherche** : « une coupe avant 18 h près de l'Ariana, pas trop cher ».
-  - IA au choix : Claude, ou Google Gemini (gratuit) ; sans clé, analyse locale.
-  - L'IA extrait les critères (sortie structurée).
-  - **Notre code classe** les établissements selon la distance, l'attente et l'avis.
-  - L'IA explique ensuite le classement : elle ne décide pas.
+- **Recherche avec l'IA** : « je veux boire quelque chose », « une coiffure à moins de 3,5 km », « le barbier le mieux noté ».
+  - IA au choix : Google Gemini (gratuit) ou Claude ; sans clé, analyse locale par mots-clés.
+  - L'IA lit la demande et la liste des établissements inscrits, puis renvoie en **sortie structurée** ceux qui répondent au besoin (« boire » → le café et le salon de thé) et les contraintes de la phrase : distance, attente, heure, quartier, budget, priorité.
+  - **Notre code contrôle et classe** : identifiants inconnus ignorés, contraintes appliquées avec nos mesures de distance et d'attente, classement par attente, distance et avis (ou selon la priorité demandée).
+  - Tous les établissements qui correspondent sont listés ; le premier ouvert porte la marque **« Choix de l'assistant »** et l'IA explique ce choix en deux phrases.
 - **Page établissement** :
   - prestations avec durée et prix, et statistiques en direct (personnes en attente, attente estimée, postes ouverts) ;
   - **formulaire dynamique** défini par le gérant ;
@@ -112,7 +113,7 @@ CREATE DATABASE dourek OWNER dourek;
 cd backend
 mvn spring-boot:run
 ```
-Les tables sont créées automatiquement. Au premier lancement, des données de démonstration sont insérées : 8 établissements à l'Ariana, des tickets et un historique.
+Les tables sont créées automatiquement. Au premier lancement, des données de démonstration sont insérées : 10 établissements à l'Ariana (dont un café et un salon de thé créés avec la catégorie « Autres »), des tickets et un historique.
 
 ### 3.2 Front-end (port 4200)
 ```bash
@@ -163,7 +164,7 @@ Gemini gratuit, pas à pas :
 
 **Sans terminal (pratique pour un correcteur)** : copier `backend/cle-ia.properties.exemple` en `backend/cle-ia.properties` et y coller la clé (`GEMINI_API_KEY=votre-clé`). Ce fichier est ignoré par Git : la clé n'est jamais publiée sur GitHub. On le transmet à part (par e-mail par exemple).
 
-L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Les modèles gratuits sont parfois surchargés (erreur 503) : le serveur passe alors au modèle suivant, et si aucun ne répond en 25 secondes il repasse en mode local.
+L'offre gratuite a une limite de requêtes par minute (une recherche avec l'IA fait deux appels : comprendre, puis expliquer) et Google peut utiliser les échanges pour améliorer ses modèles. Les modèles gratuits sont parfois surchargés (erreur 503) : le serveur passe alors au modèle suivant, et si aucun ne répond en 25 secondes il repasse en mode local.
 
 **Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
 
@@ -219,9 +220,10 @@ frontend/  application Angular
 cd backend
 mvn test
 ```
-16 tests, sans base de données ni clé d'IA :
+28 tests, sans base de données ni clé d'IA :
+- **recherche avec l'IA** : ce que notre code contrôle (identifiants inventés par le modèle ignorés, distance, attente et heure appliquées, files en pause jamais choisies, priorité du client) et le mode sans IA (« coiffure », « je veux boire quelque chose », « à moins de 3,5 km ») ;
 - **formulaire par IA** : contrôle de la proposition du modèle (types, options, doublons, longueurs) et règles du mode sans IA ;
-- **recherche** : catégorie devinée depuis le texte (« coiffeur », « prise de sang »…), mots utiles, critères de l'assistant sans IA ;
+- **recherche normale** : catégories devinées depuis le texte (« coiffure », « coupe femme », « prise de sang »…), mots utiles ;
 - **Gemini** : ordre des modèles de secours (flash-lite, puis flash, version stable la plus récente) et erreurs qui ne changent pas de modèle (clé refusée, schéma refusé).
 
 ### Parcours testés (Playwright, Chrome)
@@ -231,10 +233,14 @@ mvn test
 | Le gérant glisse un champ « Date » dans le formulaire, le réordonne, publie la version 4 | Le formulaire du client affiche la v4 avec le nouveau champ |
 | Champ obligatoire vide à la prise de ticket | Refus 400 avec un message clair |
 | Employé qui appelle une route réservée au gérant | Refus 403 |
-| Assistant : « une barbe pas loin, le plus vite possible » | Classement et explication (mode local sans clé) |
+| Recherche normale « coiffure », puis « je veux boire quelque chose » | 5 salons listés (barbiers et coiffure femme) ; la phrase ne donne rien et la page propose de l'essayer avec l'IA |
+| Recherche avec l'IA, vraie clé Gemini (13/11/2026) : « coiffure » | Les 5 salons sont listés, « Choix de l'assistant » sur le plus rapide, explication en 2 phrases, réponse en 3 secondes environ |
+| Recherche avec l'IA, vraie clé : « je veux boire quelque chose » | Café des Jasmins (choix de l'assistant) et Le Patio, rien d'autre |
+| Recherche avec l'IA, vraie clé : « une coiffure à moins de 1 km » | Étiquettes « Coiffure » et « à moins de 1 km », seuls les 2 salons à moins de 1 km restent |
+| Recherche avec l'IA sans clé : « une barbe à Ennasr », « le barbier le mieux noté » | Même écran en mode local (mention affichée), classement selon la priorité |
 | Le gérant écrit « Laboratoire : date de naissance, à jeun, ordonnance » et clique sur « Proposer un formulaire » | Les champs apparaissent dans le constructeur, « Annuler » rétablit l'ancien formulaire, la publication donne la v4 côté client |
 | Même demande avec une vraie clé Gemini gratuite (13/11/2026) | Réponse en 1 à 2 secondes : « Date de naissance » (date), « Êtes-vous à jeun » (Oui/Non), « Type d'ordonnance » (liste) |
-| Assistant avec la vraie clé : « je veux me raser la barbe vers Ennasr, pas trop cher » | Critères compris (barbier, Ennasr, petit prix), Barber Ennasr en tête avec une explication |
+| Recherche avec l'IA, vraie clé : « je veux me raser la barbe vers Ennasr, pas trop cher » | Critères compris (se raser, Ennasr, petit prix), Barber Ennasr avec une explication |
 | Modèle Gemini surchargé (503) ou retiré (404) | Le serveur passe au modèle suivant sans erreur pour le visiteur |
 | IA Gemini (faux serveur de test) : modèle inconnu, schéma refusé, mauvaise clé | Autre modèle choisi, nouvel essai en JSON simple, puis repli en mode local |
 | Client non connecté qui ouvre « Mon ticket » ou une fiche | Renvoi à la connexion, puis retour à la page demandée |
@@ -287,3 +293,4 @@ Chaque fonctionnalité a été développée sur sa propre branche, puis fusionn�
 | `docs/readme` | Ce README |
 | `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
 | `fix/recherche-localisation` | Recherche affichée même sans réponse à la demande de localisation |
+| `feat/recherche-ia-intelligente` | Deux boutons de recherche (normale, avec l'IA), IA qui choisit parmi les établissements inscrits, choix de l'assistant |
