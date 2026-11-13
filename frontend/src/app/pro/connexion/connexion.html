@@ -1,0 +1,45 @@
+<div class="split">
+  <div class="brand">
+    <h1>Gérez votre file d’attente<br />sans matériel.</h1>
+    <p class="intro">Un compte gérant donne accès à votre propre espace : votre établissement, vos services, votre formulaire client et votre tableau de bord.</p>
+    <ol class="how">
+      <li><span class="n">1</span><div><b>Créez votre compte gérant</b><div class="small">E-mail, téléphone et mot de passe.</div></div></li>
+      <li><span class="n">2</span><div><b>Configurez votre établissement</b><div class="small">Adresse, horaires, services, postes et formulaire (moins de 10 min).</div></div></li>
+      <li><span class="n">3</span><div><b>Accédez à votre tableau de bord</b><div class="small">À chaque connexion, vous arrivez directement dans votre espace.</div></div></li>
+      <li><span class="n">4</span><div><b>Invitez vos employés</b><div class="small">Ils se connectent et ouvrent l’écran employé de leur poste.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="formside">
+    <form class="card login" (ngSubmit)="seConnecter()" novalidate>
+      <div class="tabs" role="tablist">
+        <span class="on" role="tab" aria-selected="true">Se connecter</span>
+        <a role="tab" routerLink="/pro/inscription">Créer mon espace</a>
+      </div>
+      <h2>Bon retour</h2>
+      <div class="small muted sous">Connectez-vous pour accéder à votre espace.</div>
+      <div class="roles" role="radiogroup" aria-label="Je suis">
+        <button type="button" role="radio" [class.on]="role() === 'GERANT'" [attr.aria-checked]="role() === 'GERANT'" (click)="choisirRole('GERANT')"><b>Gérant</b><div class="muted">Tableau de bord, réglages</div></button>
+        <button type="button" role="radio" [class.on]="role() === 'EMPLOYE'" [attr.aria-checked]="role() === 'EMPLOYE'" (click)="choisirRole('EMPLOYE')"><b>Employé</b><div class="muted">Écran de mon poste</div></button>
+      </div>
+      <div class="field">
+        <label class="label" for="email">E-mail</label>
+        <input id="email" class="input" type="email" name="email" autocomplete="username" [ngModel]="email()" (ngModelChange)="email.set($event)" placeholder="karim.salon@gmail.com" />
+      </div>
+      <div class="field">
+        <label class="label" for="mdp">Mot de passe</label>
+        <div class="mdp">
+          <input id="mdp" class="input" [type]="voir() ? 'text' : 'password'" name="mdp" autocomplete="current-password" [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" />
+          <button type="button" class="oeil" (click)="voir.set(!voir())" [attr.aria-label]="voir() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"><app-icon name="eye" /></button>
+        </div>
+      </div>
+      @if (erreur()) { <p class="error" role="alert">{{ erreur() }}</p> }
+      <button class="btn lg block" type="submit" [disabled]="envoi()">
+        {{ role() === 'GERANT' ? 'Accéder à mon tableau de bord' : 'Ouvrir l’écran de mon poste' }} <app-icon name="arrow" />
+      </button>
+      <button type="button" class="btn link small demo" (click)="remplirDemo()">Remplir avec le compte de démonstration</button>
+      <div class="divider"></div>
+      <div class="small muted centre">Pas encore d’espace ? <a class="lien" routerLink="/pro/inscription">Créer mon établissement gratuitement</a></div>
+    </form>
+  </div>
+</div>
