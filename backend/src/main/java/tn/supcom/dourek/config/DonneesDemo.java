@@ -144,7 +144,7 @@ public class DonneesDemo implements CommandLineRunner {
         Instant maintenant = Instant.now();
         Instant ouverture = LocalDate.now(FileService.TUNIS).atStartOfDay(FileService.TUNIS).plusHours(9).toInstant();
         String[] prenoms = {"Youssef M.", "Hedi B.", "Mme Trabelsi", "Walid S.", "Omar K.", "Nour H.", "Mehdi G.", "Rania T.", "Fares J.", "Ines K."};
-        Map<String, Integer> attente = Map.of("salon-karim", 4, "barber-ennasr", 6, "coiff-style-ariana", 1,
+        Map<String, Integer> attente = Map.of("salon-karim", 4, "barber-ennasr", 2, "coiff-style-ariana", 1,
                 "salon-lina", 3, "labo-el-menzah", 5, "agence-ariana-centre", 7, "municipalite-ariana", 9);
 
         for (Etablissement e : tous) {

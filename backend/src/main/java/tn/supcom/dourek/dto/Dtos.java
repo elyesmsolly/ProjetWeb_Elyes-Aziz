@@ -52,7 +52,7 @@ public final class Dtos {
 
     public record TicketVue(
             String code, String numero, String statut,
-            String etablissementSlug, String etablissementNom, String adresse,
+            Long etablissementId, String etablissementSlug, String etablissementNom, String adresse,
             double latitude, double longitude,
             String prestation, int personnesAvant, int attenteMinutes, Instant passageEstime,
             Instant creeLe, Instant appeleLe, Instant termineLe, String poste,

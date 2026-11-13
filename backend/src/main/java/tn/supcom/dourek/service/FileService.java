@@ -166,7 +166,7 @@ public class FileService {
         }
 
         return new TicketVue(t.getCode(), t.getNumero(), t.getStatut().name(),
-                e.getSlug(), e.getNom(), e.getAdresse(), e.getLatitude(), e.getLongitude(),
+                e.getId(), e.getSlug(), e.getNom(), e.getAdresse(), e.getLatitude(), e.getLongitude(),
                 t.getPrestation() == null ? null : t.getPrestation().getNom(),
                 devant, attente, Instant.now().plus(Duration.ofMinutes(attente)),
                 t.getCreeLe(), t.getAppeleLe(), t.getTermineLe(), t.getPoste(),
