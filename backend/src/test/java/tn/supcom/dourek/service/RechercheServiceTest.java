@@ -3,7 +3,6 @@ package tn.supcom.dourek.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
-import tn.supcom.dourek.dto.Dtos.Criteres;
 import tn.supcom.dourek.model.Categorie;
 
 /** Compréhension d'une recherche en texte libre, sans IA. */
@@ -37,12 +36,12 @@ class RechercheServiceTest {
     }
 
     @Test
-    void lAssistantSansIaExtraitLesCriteres() {
-        Criteres c = AssistantService.extraireLocalement("Une barbe à Ennasr avant 18 h, pas trop cher");
-        assertThat(c.categorie()).isEqualTo("BARBIER");
-        assertThat(c.prestation()).isEqualTo("Barbe");
-        assertThat(c.quartier()).isEqualTo("ennasr");
-        assertThat(c.avantHeure()).isEqualTo(18);
-        assertThat(c.petitPrix()).isTrue();
+    void coiffureSeulDesigneLesBarbiersEtLaCoiffureFemme() {
+        assertThat(RechercheService.categoriesDepuisTexte("coiffure")).containsExactlyInAnyOrder(Categorie.BARBIER, Categorie.COIFFURE_FEMME);
+        assertThat(RechercheService.categoriesDepuisTexte("une coupe")).containsExactlyInAnyOrder(Categorie.BARBIER, Categorie.COIFFURE_FEMME);
+        assertThat(RechercheService.categoriesDepuisTexte("coiffure homme")).containsExactly(Categorie.BARBIER);
+        assertThat(RechercheService.categoriesDepuisTexte("me raser la barbe")).containsExactly(Categorie.BARBIER);
+        assertThat(RechercheService.categoriesDepuisTexte("coiffure pour femme")).containsExactly(Categorie.COIFFURE_FEMME);
+        assertThat(RechercheService.categoriesDepuisTexte("vêtements homme")).isEmpty();
     }
 }

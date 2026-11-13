@@ -3,8 +3,10 @@ package tn.supcom.dourek.service;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.supcom.dourek.dto.Dtos.*;
@@ -14,7 +16,8 @@ import tn.supcom.dourek.repository.EtablissementRepository;
 
 /**
  * Recherche et classement des établissements. Le classement est fait ici, par notre code
- * (distance, attente, avis) : il est contrôlable et testable. L'assistant IA ne fait qu'expliquer.
+ * (distance, attente, avis) : il est contrôlable et testable. C'est la recherche « normale », sans IA ;
+ * l'assistant (AssistantService) s'appuie sur les mêmes fiches et le même score.
  */
 @Service
 public class RechercheService {
@@ -36,29 +39,27 @@ public class RechercheService {
     public List<EtablissementResume> rechercher(String categorie, String texte, Double lat, Double lng) {
         double la = lat == null ? LAT_ARIANA : lat, lo = lng == null ? LNG_ARIANA : lng;
         String q = normaliser(texte);
-        // « coiffeur », « barbe », « analyse »… : on devine d'abord la catégorie, puis on cherche les autres mots.
+        // « coiffure », « barbe », « analyse »… : on devine d'abord la ou les catégories (« coiffure » seul désigne
+        // les barbiers ET la coiffure femme), puis on cherche les autres mots.
         boolean filtre = categorie != null && !categorie.isBlank();
-        Categorie devinee = q.isBlank() || filtre ? null : categorieDepuisTexte(q);
+        Set<Categorie> devinees = q.isBlank() || filtre ? Set.of() : categoriesDepuisTexte(q);
         List<String> mots = motsUtiles(q);
         // Les mots qui désignent la catégorie (« coiffeur », « coupe »…) ne départagent plus les établissements :
         // ceux qui ont servi à la deviner, ou ceux qui répètent la catégorie déjà choisie dans les filtres.
-        if (devinee != null) mots.removeIf(m -> categorieDepuisTexte(m) != null || GENERIQUES.contains(m));
-        else if (filtre) mots.removeIf(m -> {
-            Categorie c = categorieDepuisTexte(m);
-            return c != null && c.name().equalsIgnoreCase(categorie);
-        });
+        if (!devinees.isEmpty()) mots.removeIf(m -> !categoriesDepuisTexte(m).isEmpty() || GENERIQUES.contains(m));
+        else if (filtre) mots.removeIf(m -> categoriesDepuisTexte(m).stream().anyMatch(c -> c.name().equalsIgnoreCase(categorie)));
         List<Etablissement> retenus = new ArrayList<>();
         java.util.Map<Etablissement, Integer> points = new java.util.HashMap<>();
         for (Etablissement e : etablissements.findAll()) {
             if (filtre && !memeCategorie(e, categorie)) continue;
-            if (devinee != null && e.getCategorie() != devinee) continue;
+            if (!devinees.isEmpty() && !devinees.contains(e.getCategorie())) continue;
             retenus.add(e);
             points.put(e, motsTrouves(e, mots));
         }
         // On garde les établissements qui correspondent au plus grand nombre de mots
         // (« Barber Ennasr » ne renvoie que Barber Ennasr, « coupe pas cher » renvoie tous les barbiers).
         int max = points.values().stream().mapToInt(Integer::intValue).max().orElse(0);
-        if (!mots.isEmpty() && (max > 0 || devinee == null)) {
+        if (!mots.isEmpty() && (max > 0 || devinees.isEmpty())) {
             final int seuil = max;
             retenus.removeIf(e -> points.get(e) < seuil || seuil == 0);
         }
@@ -67,7 +68,7 @@ public class RechercheService {
             res.add(resume(e, la, lo, false));
         }
         res.sort(Comparator.comparingDouble(EtablissementResume::score));
-        if (!res.isEmpty() && res.getFirst().fileOuverte()) res.set(0, avecMeilleurChoix(res.getFirst()));
+        if (!res.isEmpty() && res.getFirst().fileOuverte()) res.set(0, marquer(res.getFirst(), true));
         return res;
     }
 
@@ -109,11 +110,12 @@ public class RechercheService {
         return 2 * r * Math.asin(Math.sqrt(a));
     }
 
-    static EtablissementResume avecMeilleurChoix(EtablissementResume r) {
+    /** Copie de la fiche avec ou sans la marque « meilleur choix » (ou « choix de l'assistant »). */
+    static EtablissementResume marquer(EtablissementResume r, boolean choix) {
         return new EtablissementResume(r.id(), r.slug(), r.nom(), r.categorie(), r.categorieLibelle(), r.quartier(),
                 r.adresse(), r.latitude(), r.longitude(), r.distanceKm(), r.note(), r.nombreAvis(), r.fileOuverte(),
                 r.heureFermeture(), r.personnesEnAttente(), r.attenteMinutes(), r.postesOuverts(), r.prestations(),
-                r.score(), true);
+                r.score(), choix);
     }
 
     /** Le filtre accepte un code (BARBIER, AUTRE…) ou un type libre créé par un gérant (ex. « Pressing »). */
@@ -156,15 +158,45 @@ public class RechercheService {
         return Normalizer.normalize(s, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT).trim();
     }
 
+    /** Catégorie principale devinée depuis un texte (la première si plusieurs sont possibles), ou null. */
     public static Categorie categorieDepuisTexte(String q) {
+        Set<Categorie> c = categoriesDepuisTexte(q);
+        return c.isEmpty() ? null : c.iterator().next();
+    }
+
+    /**
+     * Catégories désignées par un texte libre. « coiffure » ou « coupe » sans autre précision désignent les
+     * barbiers et la coiffure femme ; « barbe » ou « coupe homme » les barbiers ; « brushing » la coiffure femme.
+     */
+    public static Set<Categorie> categoriesDepuisTexte(String q) {
         String t = normaliser(q);
-        if (t.matches(".*(labo|analyse|prise de sang|bilan|sang).*")) return Categorie.LABORATOIRE;
-        if (t.matches(".*(banque|agence|poste|operateur|telephon|facture|abonnement).*")) return Categorie.AGENCE;
-        if (t.matches(".*(mairie|municipal|administration|papier|extrait|legalisation|signature).*")) return Categorie.ADMINISTRATION;
+        if (t.matches(".*(labo|analyse|prise de sang|bilan|sang).*")) return EnumSet.of(Categorie.LABORATOIRE);
+        if (t.matches(".*(banque|agence|poste|operateur|telephon|facture|abonnement).*")) return EnumSet.of(Categorie.AGENCE);
+        if (t.matches(".*(mairie|municipal|administration|papier|extrait|legalisation|signature).*")) return EnumSet.of(Categorie.ADMINISTRATION);
         // \b : « madame » ne doit pas être lu comme « dame ».
-        if (t.matches(".*(\\b(femmes?|dames?)\\b|brushing|meche|couleur|lissage).*") && t.matches(".*(coiff|coupe|brushing|meche|couleur|lissage|salon).*"))
-            return Categorie.COIFFURE_FEMME;
-        if (t.matches(".*(barb|coupe|degrade|coiff|rasage|cheveu).*")) return Categorie.BARBIER;
-        return null;
+        boolean femme = t.matches(".*(\\b(femmes?|dames?|filles?)\\b|brushing|meche|couleur|lissage).*")
+                && t.matches(".*(coiff|coupe|cheveu|brushing|meche|couleur|lissage|salon).*");
+        boolean homme = t.matches(".*(barb|rasage|degrade).*")
+                || (t.matches(".*\\b(hommes?|garcons?)\\b.*") && t.matches(".*(coiff|coupe|cheveu|salon).*"));
+        if (femme && !homme) return EnumSet.of(Categorie.COIFFURE_FEMME);
+        if (homme && !femme) return EnumSet.of(Categorie.BARBIER);
+        if (femme || t.matches(".*(coiff|coupe|cheveu).*")) return EnumSet.of(Categorie.BARBIER, Categorie.COIFFURE_FEMME);
+        return Set.of();
+    }
+
+    /** Mots de la fiche qui disent ce que fait l'établissement : nom, type et prestations (pas l'adresse). */
+    static Set<String> motsMetier(EtablissementResume e) {
+        StringBuilder sb = new StringBuilder(e.nom()).append(' ').append(e.categorieLibelle());
+        e.prestations().forEach(p -> sb.append(' ').append(p.nom()));
+        return new java.util.HashSet<>(List.of(normaliser(sb.toString()).split("[^a-z0-9]+")));
+    }
+
+    /** Vrai si un des mots cherchés figure dans la fiche (mot entier, ou même début pour les mots longs). */
+    static boolean correspond(EtablissementResume e, List<String> mots) {
+        Set<String> fiche = motsMetier(e);
+        for (String mot : mots)
+            for (String f : fiche)
+                if (f.equals(mot) || (mot.length() >= 5 && f.length() >= 5 && f.startsWith(mot.substring(0, 5)))) return true;
+        return false;
     }
 }

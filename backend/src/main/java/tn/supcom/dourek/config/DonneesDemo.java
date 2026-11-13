@@ -94,7 +94,21 @@ public class DonneesDemo implements CommandLineRunner {
         mairie.ajouterPrestation(new Prestation("Légalisation de signature", "", 5, 0));
         mairie.ajouterPrestation(new Prestation("Extrait de naissance", "", 7, 0));
 
-        List<Etablissement> tous = List.of(karim, ennasr, style, b2080, lina, labo, agence, mairie);
+        // Types libres (catégorie « Autres ») : ils servent aussi à montrer la recherche avec l'IA (« je veux boire quelque chose »).
+        Etablissement cafe = etab("cafe-des-jasmins", "Café des Jasmins", Categorie.AUTRE, "Avenue Habib Bourguiba, Ariana", "Ariana",
+                36.8618, 10.1972, 4.4, 73, 7, 22, "Tous les jours : 7 h – 22 h", 2, "Café de quartier : commandez à emporter sans faire la queue.");
+        cafe.setCategorieLibre("Café");
+        cafe.ajouterPrestation(new Prestation("Café express", "À emporter", 3, 2));
+        cafe.ajouterPrestation(new Prestation("Thé à la menthe", "", 4, 2.5));
+        cafe.ajouterPrestation(new Prestation("Jus d'orange frais", "", 5, 5));
+
+        Etablissement salonDeThe = etab("salon-de-the-el-menzah", "Le Patio", Categorie.AUTRE, "Rue Abou El Kacem Chebbi, El Menzah 6", "El Menzah",
+                36.8487, 10.1822, 4.6, 58, 8, 23, "Tous les jours : 8 h – 23 h", 1, "Salon de thé et pâtisserie : réservez votre table à distance.");
+        salonDeThe.setCategorieLibre("Salon de thé");
+        salonDeThe.ajouterPrestation(new Prestation("Table pour 2", "Boissons chaudes et pâtisseries", 10, 0));
+        salonDeThe.ajouterPrestation(new Prestation("Table pour 4", "", 15, 0));
+
+        List<Etablissement> tous = List.of(karim, ennasr, style, b2080, lina, labo, agence, mairie, cafe, salonDeThe);
         etablissements.saveAll(tous);
 
         // Formulaire du Salon Karim (version 3, comme dans la maquette)
@@ -148,7 +162,8 @@ public class DonneesDemo implements CommandLineRunner {
         Instant ouverture = LocalDate.now(FileService.TUNIS).atStartOfDay(FileService.TUNIS).plusHours(9).toInstant();
         String[] prenoms = {"Youssef M.", "Hedi B.", "Mme Trabelsi", "Walid S.", "Omar K.", "Nour H.", "Mehdi G.", "Rania T.", "Fares J.", "Ines K."};
         Map<String, Integer> attente = Map.of("salon-karim", 4, "barber-ennasr", 2, "coiff-style-ariana", 1,
-                "salon-lina", 3, "labo-el-menzah", 5, "agence-ariana-centre", 7, "municipalite-ariana", 9);
+                "salon-lina", 3, "labo-el-menzah", 5, "agence-ariana-centre", 7, "municipalite-ariana", 9,
+                "cafe-des-jasmins", 2, "salon-de-the-el-menzah", 1);
 
         for (Etablissement e : tous) {
             int nAttente = attente.getOrDefault(e.getSlug(), 0);

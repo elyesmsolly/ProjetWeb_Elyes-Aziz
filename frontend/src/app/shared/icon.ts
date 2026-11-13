@@ -29,6 +29,8 @@ const ICONES: Record<string, string> = {
   qr: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/>',
   scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.5 20 18M8.5 16.5 20 6"/>',
   flask: '<path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/>',
+  store: '<path d="M4 9.5 5.5 4h13L20 9.5M5 9.5V20h14V9.5M4 9.5h16M9.5 20v-5.5h5V20"/>',
+  cup: '<path d="M5 9h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5z"/><path d="M17 10.5h1.5a2.5 2.5 0 0 1 0 5H16.6"/><path d="M8.5 3.5v2.5M12.5 3.5v2.5"/>',
   bank: '<path d="M3 10h18L12 4zM5 10v8M10 10v8M14 10v8M19 10v8M3 20h18"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
   skip: '<path d="M5 5v14l9-7zM18 5v14"/>',

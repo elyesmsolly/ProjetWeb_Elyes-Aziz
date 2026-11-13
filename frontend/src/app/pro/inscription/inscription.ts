@@ -62,7 +62,7 @@ export class Inscription {
   protected readonly champs = signal<ChampFormulaire[]>(this.modeles.defaut.map((c) => ({ ...c })));
 
   protected readonly reperes = computed(() => [{ id: 1, lat: this.pos().lat, lng: this.pos().lng, texte: this.nomEtab() || 'Mon établissement' }]);
-  protected readonly icone = computed(() => icone(this.categorie()));
+  protected readonly icone = computed(() => icone(this.categorie(), this.categorieLibre()));
   protected readonly libelleCategorie = computed(() => this.categorie() === 'AUTRE' && this.categorieLibre().trim()
     ? this.categorieLibre().trim().charAt(0).toUpperCase() + this.categorieLibre().trim().slice(1) : CATEGORIES.find((c) => c.code === this.categorie())?.libelle ?? '');
   protected readonly Math = Math;

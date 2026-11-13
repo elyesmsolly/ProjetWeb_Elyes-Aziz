@@ -20,6 +20,8 @@ export function prix(p: number): string { return p === 0 ? 'Gratuit' : `${p.toFi
 
 export function badgeAttente(min: number): 'ok' | 'warn' | 'danger' { return min <= 20 ? 'ok' : min <= 45 ? 'warn' : 'danger'; }
 
-export function icone(categorie: string): string {
+/** Icône d'un type d'établissement. Pour « Autres », le type libre saisi par le gérant donne un indice (« Café »). */
+export function icone(categorie: string, libelle = ''): string {
+  if (categorie === 'AUTRE') return /caf|th[ée]|jus|boisson/i.test(libelle) ? 'cup' : 'store';
   return ({ LABORATOIRE: 'flask', AGENCE: 'bank', ADMINISTRATION: 'form' } as Record<string, string>)[categorie] ?? 'scissors';
 }

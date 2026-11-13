@@ -79,8 +79,11 @@ export class Carte implements AfterViewInit, OnDestroy {
     // Recentre la carte quand on l'agrandit ou la réduit.
     effect(() => { this.plein(); setTimeout(() => this.carte?.invalidateSize(), 50); }, { injector: this.injector });
     this.dessiner(this.reperes(), this.moi());
-    new ResizeObserver(() => this.carte?.invalidateSize()).observe(this.zone().nativeElement);
+    this.taille = new ResizeObserver(() => this.carte?.invalidateSize());
+    this.taille.observe(this.zone().nativeElement);
   }
+
+  private taille?: ResizeObserver;
 
   private dessiner(reperes: Repere[], moi: { lat: number; lng: number } | null) {
     if (!this.carte) return;
@@ -98,7 +101,12 @@ export class Carte implements AfterViewInit, OnDestroy {
     }
   }
 
-  ngOnDestroy() { this.carte?.remove(); }
+  ngOnDestroy() {
+    // Sans cela, un redimensionnement tardif appellerait une carte déjà supprimée.
+    this.taille?.disconnect();
+    this.carte?.remove();
+    this.carte = undefined;
+  }
 }
 
 function echapper(s: string) {

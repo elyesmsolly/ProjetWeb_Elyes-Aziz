@@ -2,7 +2,7 @@
   <div class="row between wrap top">
     <div>
       <h2>{{ titre() }}</h2>
-      <div class="muted small">{{ ouverts() }} établissement{{ ouverts() > 1 ? 's' : '' }} ouvert{{ ouverts() > 1 ? 's' : '' }} · attente mise à jour en direct</div>
+      <div class="muted small">{{ ouverts() }} établissement{{ ouverts() > 1 ? 's' : '' }} ouvert{{ ouverts() > 1 ? 's' : '' }} · {{ reponse() ? 'attente au moment de la recherche' : 'attente mise à jour en direct' }}</div>
     </div>
     <div class="toggle" role="tablist" aria-label="Affichage">
       <button role="tab" [class.on]="vue() === 'liste'" [attr.aria-selected]="vue() === 'liste'" (click)="vue.set('liste')"><app-icon name="list" [size]="14" />Liste</button>
@@ -33,32 +33,44 @@
   <div class="layout" [class.carte-seule]="vue() === 'carte'">
     <div class="col liste">
       <div class="card ai" id="assistant">
-        <div class="bot"><app-icon name="spark" /></div>
-        <div class="grow">
-          <form class="ask" (ngSubmit)="demander()">
-            <label class="sr-only" for="q-ia">Votre demande</label>
-            <input id="q-ia" class="input" name="q" [ngModel]="question()" (ngModelChange)="question.set($event)" maxlength="500"
-              placeholder="« Une coupe avant 18 h près de l’Ariana, pas trop cher »" autocomplete="off" />
-            <button class="btn sm" type="submit" [disabled]="reflechit() || !question().trim()" aria-label="Demander à l’assistant">
-              @if (reflechit()) { <span class="spinner"></span> } @else { <app-icon name="arrow" [size]="16" /> }
-            </button>
-          </form>
-          @if (reponse(); as r) {
-            <p class="reponse"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
-            <div class="row wrap propositions">
-              <span class="small muted">La liste ci-dessous montre {{ r.resultats.length > 1 ? 'les ' + r.resultats.length + ' résultats' : r.resultats.length === 1 ? 'le résultat' : 'les résultats' }} de l’assistant.</span>
-              <button type="button" class="chip" (click)="effacerAssistant()">Voir tous les établissements</button>
+        <form class="ask" (ngSubmit)="valider()">
+          <label class="input-icon champ">
+            <span class="sr-only">Votre recherche</span>
+            <app-icon name="search" />
+            <input id="q" class="input" name="q" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" maxlength="500"
+              placeholder="Un nom, un service ou une phrase…" autocomplete="off" />
+          </label>
+          <button class="btn ghost" type="button" (click)="rechercherNormal()">Rechercher</button>
+          <button class="btn" type="button" (click)="demander()" [disabled]="reflechit() || !saisie().trim()">
+            @if (reflechit()) { <span class="spinner"></span> } @else { <app-icon name="spark" [size]="16" /> }
+            Rechercher avec l’IA
+          </button>
+        </form>
+        @if (reflechit()) {
+          <p class="reponse muted" role="status">L’assistant lit votre demande et cherche parmi les établissements…</p>
+        } @else if (reponse(); as r) {
+          <p class="reponse" role="status"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
+          @if (compris().length) {
+            <div class="row wrap compris">
+              <span class="small muted">Compris :</span>
+              @for (c of compris(); track c) { <span class="badge">{{ c }}</span> }
             </div>
-          } @else if (reflechit()) {
-            <p class="reponse muted">L’assistant analyse votre demande…</p>
-          } @else {
-            <p class="reponse muted">Décrivez votre besoin en une phrase : prestation, heure, quartier, budget.</p>
           }
-          <div class="small muted note">
-            Classement calculé par Dourek (distance, attente, avis). L’assistant explique, il ne décide pas.
-            @if (reponse()?.source === 'local') { <span>(analyse locale : aucune IA n’est configurée sur ce serveur)</span> }
+          <div class="row wrap propositions">
+            <span class="small muted">{{ pluriel(r.resultats.length, 'établissement') }} {{ r.resultats.length > 1 ? 'répondent' : 'répond' }} à votre demande.</span>
+            <button type="button" class="chip" (click)="toutVoir()">Voir tous les établissements</button>
           </div>
-        </div>
+          <div class="small muted note">
+            L’IA comprend votre phrase et choisit les établissements qui y répondent. Les distances, les attentes et le classement sont calculés par Dourek.
+            @if (r.source === 'local') { <span>(analyse locale par mots-clés : aucune IA n’est configurée sur ce serveur)</span> }
+          </div>
+        } @else {
+          <p class="reponse muted"><b>Rechercher</b> trouve par mots : nom, type, prestation, quartier. <b>Rechercher avec l’IA</b> comprend une phrase entière.</p>
+          <div class="row wrap propositions">
+            <span class="small muted">Essayez avec l’IA :</span>
+            @for (ex of exemplesIa; track ex) { <button type="button" class="chip" (click)="demander(ex)"><app-icon name="spark" [size]="14" />{{ ex }}</button> }
+          </div>
+        }
       </div>
 
       @if (erreur()) {
@@ -69,9 +81,9 @@
         @for (e of resultats(); track e.id; let i = $index) {
           <a class="card res" [class.best]="e.meilleurChoix" [class.ferme]="!e.fileOuverte" [routerLink]="['/etablissements', e.slug]"
              (mouseenter)="selection.set(e.id)">
-            <div class="thumb" [class.v2]="i % 3 === 1" [class.v3]="i % 3 === 2"><app-icon [name]="fmt.icone(e.categorie)" [size]="32" /></div>
+            <div class="thumb" [class.v2]="i % 3 === 1" [class.v3]="i % 3 === 2"><app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="32" /></div>
             <div class="info">
-              <div class="row wrap" style="gap:8px"><h3>{{ e.nom }}</h3>@if (e.meilleurChoix) { <span class="badge primary">Meilleur choix</span> }</div>
+              <div class="row wrap" style="gap:8px"><h3>{{ e.nom }}</h3>@if (e.meilleurChoix) { <span class="badge primary">@if (reponse()) { <app-icon name="spark" [size]="12" />Choix de l’assistant } @else { Meilleur choix }</span> }</div>
               <div class="meta">
                 <span><app-icon name="pin" [size]="14" />{{ fmt.distance(e.distanceKm) }}</span>
                 <span><app-icon name="star" [size]="14" />{{ fmt.note(e.note) }} ({{ e.nombreAvis }})</span>
@@ -96,7 +108,15 @@
             </div>
           </a>
         } @empty {
-          <div class="card vide"><h3>Aucun établissement ne correspond</h3><p class="muted small">Retirez un filtre ou demandez à l’assistant.</p></div>
+          <div class="card vide">
+            <h3>Aucun établissement ne correspond</h3>
+            @if (reponse()) {
+              <p class="muted small">Retirez un filtre ou reformulez votre demande.</p>
+            } @else {
+              <p class="muted small">Retirez un filtre, ou décrivez votre besoin en une phrase et essayez avec l’IA.</p>
+              @if (saisie().trim()) { <button type="button" class="btn sm" style="margin-top:12px" (click)="demander()"><app-icon name="spark" [size]="14" />Rechercher « {{ saisie().trim() }} » avec l’IA</button> }
+            }
+          </div>
         }
       }
     </div>

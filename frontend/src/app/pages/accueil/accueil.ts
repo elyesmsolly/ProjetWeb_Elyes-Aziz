@@ -24,14 +24,15 @@ export class Accueil {
   protected readonly proches = toSignal(this.api.rechercher().pipe(catchError(() => of(null))), { initialValue: undefined });
 
   protected readonly fmt = { distance, note, badgeAttente, icone };
-  protected readonly exemple = 'Une coupe avant 18 h près de l’Ariana';
+  protected readonly exemple = 'Je veux boire quelque chose';
 
   rechercher() {
     this.router.navigate(['/etablissements'], { queryParams: { q: this.service() || null } });
   }
 
-  demanderAssistant() {
-    this.router.navigate(['/etablissements'], { queryParams: { assistant: this.exemple } });
+  /** Recherche avec l'IA : la phrase tapée (ou l'exemple) est envoyée à l'assistant sur la page des résultats. */
+  demanderAssistant(phrase = this.service().trim()) {
+    this.router.navigate(['/etablissements'], { queryParams: { assistant: phrase || null }, fragment: phrase ? undefined : 'assistant' });
   }
 
   iconeCategorie(code: string) {

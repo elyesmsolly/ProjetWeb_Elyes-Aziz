@@ -6,7 +6,7 @@
     <nav class="small muted fil" aria-label="Fil d’Ariane">
       <a routerLink="/etablissements">Établissements</a> › <a routerLink="/etablissements" [queryParams]="{ categorie: r.categorie }">{{ r.categorieLibelle }}</a> › <b>{{ r.nom }}</b>
     </nav>
-    <div class="cover thumb"><app-icon [name]="fmt.icone(r.categorie)" [size]="64" /></div>
+    <div class="cover thumb"><app-icon [name]="fmt.icone(r.categorie, r.categorieLibelle)" [size]="64" /></div>
 
     <div class="layout">
       <div class="col" style="gap:24px">
@@ -14,7 +14,7 @@
           <div>
             <h1>{{ r.nom }}</h1>
             <div class="meta small muted">
-              <span><app-icon [name]="fmt.icone(r.categorie)" [size]="14" />{{ r.categorieLibelle }}</span>
+              <span><app-icon [name]="fmt.icone(r.categorie, r.categorieLibelle)" [size]="14" />{{ r.categorieLibelle }}</span>
               <span><app-icon name="pin" [size]="14" />{{ r.adresse }} · {{ fmt.distance(r.distanceKm) }}</span>
               <span><app-icon name="star" [size]="14" />{{ fmt.note(r.note) }} ({{ r.nombreAvis }} avis)</span>
             </div>
