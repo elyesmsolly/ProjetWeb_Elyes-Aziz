@@ -146,7 +146,7 @@ Aucune clé n'est écrite dans le code.
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Clé de l'API Claude (assistant de recherche et formulaire par IA) | (vide) |
 | `GEMINI_API_KEY` | Clé gratuite Google Gemini, utilisée s'il n'y a pas de clé Claude | (vide) |
-| `DOUREK_GEMINI_MODELE` | Modèle Gemini. S'il n'existe plus, le serveur choisit tout seul le modèle « flash » disponible. | `gemini-flash-latest` |
+| `DOUREK_GEMINI_MODELE` | Modèle Gemini essayé en premier. S'il est surchargé, retiré ou hors quota, le serveur essaie tout seul les autres modèles « flash » et garde celui qui répond. | `gemini-flash-lite-latest` |
 | `DOUREK_ASSISTANT_MODELE` | Modèle Claude utilisé | `claude-opus-5-5` |
 | `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
@@ -158,12 +158,12 @@ Aucune clé n'est écrite dans le code.
 
 Gemini gratuit, pas à pas :
 1. aller sur https://aistudio.google.com/apikey avec un compte Google et cliquer sur « Create API key » ;
-2. dans le terminal du back-end (PowerShell) : `$env:GEMINI_API_KEY="AIza..."` ;
+2. dans le terminal du back-end (PowerShell) : `$env:GEMINI_API_KEY="votre-clé"` (la clé commence par `AIza` ou, pour les clés récentes, par `AQ.`) ;
 3. lancer `mvn spring-boot:run` **dans ce même terminal**. Le journal affiche « IA de Dourek (assistant et formulaire) : API Gemini ».
 
-**Sans terminal (pratique pour un correcteur)** : copier `backend/cle-ia.properties.exemple` en `backend/cle-ia.properties` et y coller la clé (`GEMINI_API_KEY=AIza...`). Ce fichier est ignoré par Git : la clé n'est jamais publiée sur GitHub. On le transmet à part (par e-mail par exemple).
+**Sans terminal (pratique pour un correcteur)** : copier `backend/cle-ia.properties.exemple` en `backend/cle-ia.properties` et y coller la clé (`GEMINI_API_KEY=votre-clé`). Ce fichier est ignoré par Git : la clé n'est jamais publiée sur GitHub. On le transmet à part (par e-mail par exemple).
 
-L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Si Gemini ne répond pas, le serveur repasse en mode local.
+L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Les modèles gratuits sont parfois surchargés (erreur 503) : le serveur passe alors au modèle suivant, et si aucun ne répond en 25 secondes il repasse en mode local.
 
 **Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
 
@@ -219,10 +219,10 @@ frontend/  application Angular
 cd backend
 mvn test
 ```
-15 tests, sans base de données ni clé d'IA :
+16 tests, sans base de données ni clé d'IA :
 - **formulaire par IA** : contrôle de la proposition du modèle (types, options, doublons, longueurs) et règles du mode sans IA ;
 - **recherche** : catégorie devinée depuis le texte (« coiffeur », « prise de sang »…), mots utiles, critères de l'assistant sans IA ;
-- **Gemini** : choix du modèle quand celui de la configuration n'existe plus.
+- **Gemini** : ordre des modèles de secours (flash-lite, puis flash, version stable la plus récente) et erreurs qui ne changent pas de modèle (clé refusée, schéma refusé).
 
 ### Parcours testés (Playwright, Chrome)
 | Scénario | Résultat |
@@ -233,6 +233,9 @@ mvn test
 | Employé qui appelle une route réservée au gérant | Refus 403 |
 | Assistant : « une barbe pas loin, le plus vite possible » | Classement et explication (mode local sans clé) |
 | Le gérant écrit « Laboratoire : date de naissance, à jeun, ordonnance » et clique sur « Proposer un formulaire » | Les champs apparaissent dans le constructeur, « Annuler » rétablit l'ancien formulaire, la publication donne la v4 côté client |
+| Même demande avec une vraie clé Gemini gratuite (13/11/2026) | Réponse en 1 à 2 secondes : « Date de naissance » (date), « Êtes-vous à jeun » (Oui/Non), « Type d'ordonnance » (liste) |
+| Assistant avec la vraie clé : « je veux me raser la barbe vers Ennasr, pas trop cher » | Critères compris (barbier, Ennasr, petit prix), Barber Ennasr en tête avec une explication |
+| Modèle Gemini surchargé (503) ou retiré (404) | Le serveur passe au modèle suivant sans erreur pour le visiteur |
 | IA Gemini (faux serveur de test) : modèle inconnu, schéma refusé, mauvaise clé | Autre modèle choisi, nouvel essai en JSON simple, puis repli en mode local |
 | Client non connecté qui ouvre « Mon ticket » ou une fiche | Renvoi à la connexion, puis retour à la page demandée |
 | Jeton expiré ou compte disparu (base de démo relancée) | Session fermée, renvoi à la connexion, pages publiques toujours lisibles |
