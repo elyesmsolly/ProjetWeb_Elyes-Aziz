@@ -1,8 +1,188 @@
-# Dourek : Projet Web, Objectif 3
+# Dourek : faites la queue depuis chez vous
 
-Plateforme de files d'attente virtuelles (« Faites la queue depuis chez vous »).
-Réalisé par Med Elyes Msolly et Med Aziz Ghazouani, SUP'COM 2026/2027.
+Plateforme de files d'attente virtuelles pour les petits commerces (barbiers, salons, laboratoires, agences, administrations).
+Le client trouve l'établissement qui a la plus courte attente, prend son ticket à distance et suit son tour en direct.
+Le gérant crée sa file, compose le formulaire que remplit le client, et l'employé appelle le suivant depuis son écran.
 
-Stack : Angular + Angular CDK, Spring Boot (Web, Data JPA, Security, WebSocket), PostgreSQL.
+Projet Web, Objectif 3, SUP'COM 2026/2027 (encadrante : Dr. Maroua Nouioua).
+Réalisé par **Med Elyes Msolly** et **Med Aziz Ghazouani**.
 
-README complet (lancement, fonctionnalités) à venir.
+---
+
+## 1. Choix du framework
+
+| Couche | Technologie | Pourquoi |
+|---|---|---|
+| Front | **Angular 22** (TypeScript, composants standalone, signals) | Framework complet : routage, formulaires, HttpClient et injection de dépendances sans bibliothèque en plus. Le typage fort sécurise les échanges avec l'API. |
+| Glisser-déposer | **Angular CDK** (`DragDropModule`, `moveItemInArray`, `copyArrayItem`) | Le constructeur de formulaire du gérant. Accessible et maintenu par l'équipe Angular. |
+| Temps réel | **WebSocket STOMP** (`@stomp/stompjs` côté front, Spring WebSocket côté back) | La file, le ticket et l'écran employé se mettent à jour sans recharger la page. |
+| Carte | **Leaflet** + OpenStreetMap | Carte des établissements et choix de l'adresse à l'inscription. |
+| Back | **Spring Boot 4** (Web, Data JPA, Security, OAuth2 Resource Server, WebSocket, Validation), **Java 21** | API REST minimale mais robuste : JPA pour la base, Spring Security pour les rôles. |
+| Base | **PostgreSQL** (ou H2 en mémoire avec le profil `demo`) | Relationnelle, transactions et verrous pour éviter deux tickets avec le même numéro. |
+| Assistant | **API Claude** (SDK officiel `anthropic-java`) | Comprend une demande en langage naturel. Sans clé, une analyse locale prend le relais. |
+
+Tout tourne en local, sans déploiement.
+
+---
+
+## 2. Fonctionnalités réalisées
+
+### Côté client
+- **Accueil** : recherche par service et lieu, catégories, établissements proches avec leur attente en direct.
+- **Recherche** (`/etablissements`) :
+  - filtres par catégorie, « ouvert maintenant », attente < 20 min, < 1 km et note 4+ ;
+  - tri, vue liste ou carte ;
+  - temps d'attente mis à jour en direct.
+- **Assistant de recherche** : « une coupe avant 18 h près de l'Ariana, pas trop cher ».
+  - L'IA extrait les critères (sortie structurée).
+  - **Notre code classe** les établissements selon la distance, l'attente et l'avis.
+  - L'IA explique ensuite le classement : elle ne décide pas.
+- **Page établissement** :
+  - prestations avec durée et prix, et statistiques en direct (personnes en attente, attente estimée, postes ouverts) ;
+  - **formulaire dynamique** défini par le gérant ;
+  - option prioritaire et heure de passage estimée.
+- **Ticket en direct** (`/ticket/:code`) :
+  - grand numéro façon afficheur LED et nombre de personnes avant vous ;
+  - suivi étape par étape, alerte « C'est votre tour ! » avec son et vibration ;
+  - « laisser passer une place », annulation en deux temps et itinéraire.
+
+### Côté professionnel
+- **Connexion** gérant ou employé (JWT) et **inscription en 5 étapes** :
+  1. le compte ;
+  2. l'établissement, avec sa position sur la carte ;
+  3. les prestations et les postes ;
+  4. le formulaire ;
+  5. la confirmation.
+- **Tableau de bord** du gérant :
+  - indicateurs (servis, en attente, attente moyenne, taux d'absence) et affluence par heure ;
+  - état des postes et file en direct ;
+  - pause ou réouverture de la file.
+- **Constructeur de formulaire** en glisser-déposer (Angular CDK) :
+  - palette de 8 types de champs, réordonnancement, champ obligatoire ou non, options, duplication ;
+  - modèles prêts (salon, laboratoire, agence) et aperçu en direct ;
+  - publication versionnée : un client déjà dans la file garde la version qu'il a remplie.
+- **Écran employé** :
+  - client en cours avec ses réponses et un chronomètre ;
+  - gros boutons **Appeler le suivant**, **Servi** et **Absent** ;
+  - prochains clients et ajout d'un client sans smartphone.
+
+### Règles métier (back)
+- Numéros par catégorie (`B-24`), et `P-xx` pour les prioritaires.
+- **1 prioritaire pour 2 clients normaux**, pour qu'aucun client n'attende indéfiniment.
+- Attente estimée = personnes devant × moyenne glissante des 20 derniers services ÷ postes ouverts.
+- **Verrou pessimiste** sur l'établissement lors de la prise de ticket et de l'appel : deux clients ne reçoivent jamais le même numéro.
+- Après chaque changement, un message est publié sur `/topic/etablissements/{id}`. Les écrans rechargent alors l'état complet, ce qui les garde justes même après une coupure.
+
+---
+
+## 3. Lancer le projet
+
+### Prérequis
+- Java 21 et Maven 3.9 ou plus récent
+- Node.js 22 ou plus récent (et npm)
+- PostgreSQL 15 ou plus récent (facultatif grâce au profil `demo`)
+
+### 3.1 Back-end (port 8080)
+
+**Option A, sans rien installer (base H2 en mémoire) :**
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+**Option B, avec PostgreSQL :**
+```sql
+-- dans psql
+CREATE USER dourek WITH PASSWORD 'dourek';
+CREATE DATABASE dourek OWNER dourek;
+```
+```bash
+cd backend
+mvn spring-boot:run
+```
+Les tables sont créées automatiquement. Au premier lancement, des données de démonstration sont insérées : 8 établissements à l'Ariana, des tickets et un historique.
+
+### 3.2 Front-end (port 4200)
+```bash
+cd frontend
+npm install
+npm start
+```
+Ouvrir http://localhost:4200. Le serveur Angular redirige `/api` et `/ws` vers le back (fichier `proxy.conf.json`).
+
+Pour tester depuis un téléphone sur le même Wi-Fi, ouvrir `http://<IP-du-PC>:4200`.
+
+### 3.3 Comptes de démonstration
+| Rôle | E-mail | Mot de passe |
+|---|---|---|
+| Gérant (Salon Karim) | `karim@dourek.tn` | `dourek123` |
+| Employé (Poste 2, Salon Karim) | `sami@dourek.tn` | `dourek123` |
+| Gérant (Labo El Menzah) | `labo@dourek.tn` | `dourek123` |
+
+Scénario conseillé :
+1. Ouvrir l'écran employé avec `sami@dourek.tn`.
+2. Dans un autre onglet ou sur un téléphone, prendre un ticket chez **Salon Karim**.
+3. Cliquer sur **Appeler le suivant** : le ticket du client passe à « C'est votre tour ! » sans recharger la page.
+
+### 3.4 Variables d'environnement (facultatives)
+Aucune clé n'est écrite dans le code.
+
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Clé de l'API Claude pour l'assistant. Sans elle, l'assistant fonctionne en mode local. | (vide) |
+| `DOUREK_ASSISTANT_MODELE` | Modèle utilisé | `claude-opus-5-5` |
+| `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
+
+Exemple :
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...      # Windows PowerShell : $env:ANTHROPIC_API_KEY="sk-ant-..."
+mvn spring-boot:run
+```
+
+---
+
+## 4. Organisation du code
+
+```
+backend/   API Spring Boot (package tn.supcom.dourek)
+  model/        entités JPA : Etablissement, Prestation, Formulaire, Ticket, Utilisateur
+  repository/   accès aux données (verrou pessimiste pour la file)
+  service/      FileService, FormulaireService, RechercheService, AssistantService, AuthService, TempsReel
+  web/          PublicController (/api), AuthController (/api/auth), ProController (/api/pro)
+  config/       sécurité JWT, WebSocket, données de démo
+frontend/  application Angular
+  src/app/core/     modèles, services API, authentification, temps réel
+  src/app/shared/   en-tête, carte, champ dynamique, constructeur de formulaire
+  src/app/pages/    accueil, recherche, établissement, ticket
+  src/app/pro/      connexion, inscription, tableau de bord, formulaire, écran employé
+```
+
+### Principales routes de l'API
+| Méthode | Route | Accès |
+|---|---|---|
+| GET | `/api/etablissements?q=&categorie=&lat=&lng=` | public |
+| GET | `/api/etablissements/{slug}` | public |
+| POST | `/api/etablissements/{slug}/tickets` | public |
+| GET / POST | `/api/tickets/{code}`, `/annuler`, `/laisser-passer` | public (code secret du ticket) |
+| POST | `/api/assistant` | public |
+| POST | `/api/auth/connexion`, `/api/auth/inscription` | public |
+| GET / POST | `/api/pro/file`, `/api/pro/file/appeler-suivant`, `/servi`, `/absent`, `/sur-place` | gérant ou employé |
+| GET / POST | `/api/pro/gerant/statistiques`, `/gerant/formulaire`, `/gerant/file/ouverture` | gérant |
+| WS | `/ws` (STOMP), sujet `/topic/etablissements/{id}` | public |
+
+---
+
+## 5. Branches
+
+Chaque fonctionnalité a été développée sur sa propre branche, puis fusionnée dans `main` :
+
+| Branche | Contenu |
+|---|---|
+| `feature/backend-api` | API Spring Boot, base de données, sécurité, temps réel, assistant IA (back) |
+| `feature/frontend-base` | Thème (charte « Ton tour »), en-tête, services, routage |
+| `feature/recherche-etablissement` | Accueil, recherche, carte, assistant (front), page établissement |
+| `feature/ticket-temps-reel` | Prise de ticket et suivi en direct |
+| `feature/espace-pro-employe` | Connexion, tableau de bord, écran employé |
+| `feature/constructeur-formulaire` | Formulaire en glisser-déposer, inscription du gérant en 5 étapes |
+| `docs/readme` | Ce README |
