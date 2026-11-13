@@ -2,7 +2,7 @@
   <a class="logo" routerLink="/"><span class="logo-mark">D</span>Dourek <span class="badge primary">Pro</span></a>
   <ol class="stepper" aria-label="Étapes">
     @for (e of etapes; track e; let i = $index) {
-      @if (i > 0) { <span class="trait" [class.fait]="i <= etape()"></span> }
+      @if (i > 0) { <li class="trait" [class.fait]="i <= etape()" aria-hidden="true"></li> }
       <li class="st" [class.done]="i < etape()" [class.cur]="i === etape()" [attr.aria-current]="i === etape() ? 'step' : null">
         <span class="c">@if (i < etape()) { <app-icon name="check" [size]="14" /> } @else { {{ i + 1 }} }</span><span class="lib">{{ e }}</span>
       </li>

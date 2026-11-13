@@ -25,7 +25,8 @@
 .res { display: grid; grid-template-columns: 120px 1fr auto; gap: 18px; align-items: center; }
 .res .thumb { height: 96px; }
 .res.best { outline: 2px solid var(--primary); outline-offset: -1px; }
-.res.ferme { opacity: .62; }
+.res.ferme { background: var(--surface-2); }
+.res.ferme .thumb, .res.ferme h3 { opacity: .7; }
 .res h3 { line-height: 1.25; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); margin-top: 6px; }
 .meta span { display: inline-flex; gap: 5px; align-items: center; }
