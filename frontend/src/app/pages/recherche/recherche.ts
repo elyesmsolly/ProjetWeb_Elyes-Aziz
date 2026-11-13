@@ -54,11 +54,12 @@ export class Recherche implements OnInit {
 
   protected readonly resultats = computed(() => {
     // Après une question à l'assistant, la liste montre ses résultats, dans son ordre.
-    const ia = this.reponse();
-    if (ia) return ia.resultats;
     const f = this.filtres();
-    const liste = (this.tous() ?? []).filter((e) =>
-      (!f.ouvert || e.fileOuverte) && (!f.attente20 || e.attenteMinutes < 20) && (!f.km1 || e.distanceKm < 1) && (!f.note4 || e.note >= 4));
+    const garde = (e: EtablissementResume) =>
+      (!f.ouvert || e.fileOuverte) && (!f.attente20 || e.attenteMinutes < 20) && (!f.km1 || e.distanceKm < 1) && (!f.note4 || e.note >= 4);
+    const ia = this.reponse();
+    if (ia) return ia.resultats.filter(garde);
+    const liste = (this.tous() ?? []).filter(garde);
     const cle: Record<Tri, (e: EtablissementResume) => number> = {
       score: (e) => e.score, attente: (e) => e.attenteMinutes, distance: (e) => e.distanceKm, note: (e) => -e.note,
     };
@@ -119,7 +120,10 @@ export class Recherche implements OnInit {
   choisirCategorie(code: string) {
     this.categorie.set(code);
     this.texte.set('');
-    this.router.navigate([], { queryParams: { categorie: code || null, q: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    // Choisir une catégorie quitte les résultats de l'assistant : sinon la liste ne changerait pas.
+    this.reponse.set(null);
+    this.question.set('');
+    this.router.navigate([], { queryParams: { categorie: code || null, q: null, assistant: null }, queryParamsHandling: 'merge', replaceUrl: true });
     this.charger();
   }
 

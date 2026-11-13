@@ -46,7 +46,7 @@
           @if (reponse(); as r) {
             <p class="reponse"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
             <div class="row wrap propositions">
-              <span class="small muted">La liste ci-dessous montre les {{ r.resultats.length }} résultat{{ r.resultats.length > 1 ? 's' : '' }} de l’assistant.</span>
+              <span class="small muted">La liste ci-dessous montre {{ r.resultats.length > 1 ? 'les ' + r.resultats.length + ' résultats' : r.resultats.length === 1 ? 'le résultat' : 'les résultats' }} de l’assistant.</span>
               <button type="button" class="chip" (click)="effacerAssistant()">Voir tous les établissements</button>
             </div>
           } @else if (reflechit()) {

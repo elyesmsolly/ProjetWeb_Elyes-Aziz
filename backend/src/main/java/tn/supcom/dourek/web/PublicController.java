@@ -40,9 +40,15 @@ public class PublicController {
                 "code", c.name(), "libelle", c.getLibelle(),
                 "nombre", tous.stream().filter(e -> e.categorie().equals(c.name())).count())).toList());
         // Types créés par les gérants via « Autres » : enregistrés en base, ils deviennent des filtres.
-        tous.stream().filter(e -> e.categorie().equals("AUTRE") && !e.categorieLibelle().equals(Categorie.AUTRE.getLibelle()))
-                .collect(java.util.stream.Collectors.groupingBy(EtablissementResume::categorieLibelle, java.util.TreeMap::new, java.util.stream.Collectors.counting()))
-                .forEach((libelle, n) -> res.add(Map.of("code", libelle, "libelle", libelle, "nombre", n, "libre", true)));
+        // « Pressing » et « pressing » forment un seul filtre (même comparaison que la recherche).
+        Map<String, List<EtablissementResume>> libres = tous.stream()
+                .filter(e -> e.categorie().equals("AUTRE") && !e.categorieLibelle().equals(Categorie.AUTRE.getLibelle()))
+                .collect(java.util.stream.Collectors.groupingBy(e -> RechercheService.normaliser(e.categorieLibelle()),
+                        java.util.TreeMap::new, java.util.stream.Collectors.toList()));
+        libres.values().forEach(groupe -> {
+            String libelle = groupe.getFirst().categorieLibelle();
+            res.add(Map.of("code", libelle, "libelle", libelle, "nombre", (long) groupe.size(), "libre", true));
+        });
         return res;
     }
 

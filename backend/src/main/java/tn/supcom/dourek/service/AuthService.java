@@ -90,8 +90,11 @@ public class AuthService {
     /** Création d'un compte client : il pourra prendre des tickets et suivre sa place. */
     @Transactional
     public AuthReponse inscriptionClient(InscriptionClientRequest req) {
-        if (utilisateurs.existsByEmailIgnoreCase(req.email()))
+        if (utilisateurs.existsByEmailIgnoreCase(req.email().trim()))
             throw Introuvable.conflit("Un compte existe déjà avec cet e-mail");
+        // Même règle que pour le champ téléphone d'un ticket : 8 à 12 chiffres.
+        if (!req.telephone().replaceAll("[\\s.+-]", "").matches("\\d{8,12}"))
+            throw Introuvable.requete("Numéro de téléphone invalide");
         Utilisateur client = new Utilisateur(req.email().trim().toLowerCase(Locale.ROOT),
                 encodeur.encode(req.motDePasse()), req.nom().trim(), Role.CLIENT, null, null);
         client.setTelephone(req.telephone().trim());

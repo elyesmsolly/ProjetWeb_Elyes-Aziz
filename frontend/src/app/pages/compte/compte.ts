@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { Icon } from '../../shared/icon';
@@ -20,7 +20,6 @@ export class Compte {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
   protected readonly nom = signal('');
   protected readonly email = signal('');
@@ -41,6 +40,8 @@ export class Compte {
     const email = this.email().trim();
     if (this.mode() === 'inscription') {
       if (!this.nom().trim() || !email || !this.telephone().trim()) return this.erreur.set('Remplissez votre nom, votre e-mail et votre téléphone.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return this.erreur.set('Adresse e-mail invalide.');
+      if (!/^\d{8,12}$/.test(this.telephone().replace(/[\s.+-]/g, ''))) return this.erreur.set('Numéro de téléphone invalide (8 chiffres au moins).');
       if (this.motDePasse().length < 6) return this.erreur.set('Le mot de passe doit contenir au moins 6 caractères.');
     } else if (!email || !this.motDePasse()) {
       return this.erreur.set('Saisissez votre e-mail et votre mot de passe.');
@@ -58,7 +59,8 @@ export class Compte {
         }
         this.auth.ouvrir(s);
         const cible = this.retour();
-        this.router.navigateByUrl(cible && cible.startsWith('/') ? cible : '/ticket');
+        // Retour uniquement vers une page de Dourek (jamais vers un autre site).
+        this.router.navigateByUrl(cible && cible.startsWith('/') && !cible.startsWith('//') ? cible : '/ticket');
       },
       error: (e) => { this.erreur.set(messageErreur(e)); this.envoi.set(false); },
     });

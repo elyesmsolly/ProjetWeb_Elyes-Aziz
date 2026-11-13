@@ -37,14 +37,20 @@ public class RechercheService {
         double la = lat == null ? LAT_ARIANA : lat, lo = lng == null ? LNG_ARIANA : lng;
         String q = normaliser(texte);
         // « coiffeur », « barbe », « analyse »… : on devine d'abord la catégorie, puis on cherche les autres mots.
-        Categorie devinee = q.isBlank() || (categorie != null && !categorie.isBlank()) ? null : categorieDepuisTexte(q);
+        boolean filtre = categorie != null && !categorie.isBlank();
+        Categorie devinee = q.isBlank() || filtre ? null : categorieDepuisTexte(q);
         List<String> mots = motsUtiles(q);
-        // Les mots qui ont servi à deviner la catégorie (« coiffeur », « coupe »…) ne départagent plus.
-        if (devinee != null) mots.removeIf(m -> categorieDepuisTexte(m) != null || m.equals("homme") || m.equals("femme"));
+        // Les mots qui désignent la catégorie (« coiffeur », « coupe »…) ne départagent plus les établissements :
+        // ceux qui ont servi à la deviner, ou ceux qui répètent la catégorie déjà choisie dans les filtres.
+        if (devinee != null) mots.removeIf(m -> categorieDepuisTexte(m) != null || GENERIQUES.contains(m));
+        else if (filtre) mots.removeIf(m -> {
+            Categorie c = categorieDepuisTexte(m);
+            return c != null && c.name().equalsIgnoreCase(categorie);
+        });
         List<Etablissement> retenus = new ArrayList<>();
         java.util.Map<Etablissement, Integer> points = new java.util.HashMap<>();
         for (Etablissement e : etablissements.findAll()) {
-            if (categorie != null && !categorie.isBlank() && !memeCategorie(e, categorie)) continue;
+            if (filtre && !memeCategorie(e, categorie)) continue;
             if (devinee != null && e.getCategorie() != devinee) continue;
             retenus.add(e);
             points.put(e, motsTrouves(e, mots));
@@ -121,6 +127,9 @@ public class RechercheService {
             "cher", "trop", "pres", "proche", "moi", "vite", "possible", "avant", "apres", "dans", "sur", "qui", "est",
             "veux", "voudrais", "cherche", "besoin", "faire", "tunis", "maintenant", "aujourd", "hui", "bon", "bien");
 
+    /** Mots trop généraux pour départager les établissements une fois la catégorie connue. */
+    private static final java.util.Set<String> GENERIQUES = java.util.Set.of("homme", "hommes", "femme", "femmes", "salon");
+
     static List<String> motsUtiles(String q) {
         List<String> mots = new ArrayList<>();
         for (String m : q.split("[^a-z0-9]+")) if (m.length() > 2 && !VIDES.contains(m)) mots.add(m);
@@ -152,7 +161,8 @@ public class RechercheService {
         if (t.matches(".*(labo|analyse|prise de sang|bilan|sang).*")) return Categorie.LABORATOIRE;
         if (t.matches(".*(banque|agence|poste|operateur|telephon|facture|abonnement).*")) return Categorie.AGENCE;
         if (t.matches(".*(mairie|municipal|administration|papier|extrait|legalisation|signature).*")) return Categorie.ADMINISTRATION;
-        if (t.matches(".*(femme|dame|brushing|meche|couleur|lissage).*") && t.matches(".*(coiff|coupe|brushing|meche|couleur|lissage|salon).*"))
+        // \b : « madame » ne doit pas être lu comme « dame ».
+        if (t.matches(".*(\\b(femmes?|dames?)\\b|brushing|meche|couleur|lissage).*") && t.matches(".*(coiff|coupe|brushing|meche|couleur|lissage|salon).*"))
             return Categorie.COIFFURE_FEMME;
         if (t.matches(".*(barb|coupe|degrade|coiff|rasage|cheveu).*")) return Categorie.BARBIER;
         return null;

@@ -100,17 +100,21 @@ export class Inscription {
   retour() { this.erreur.set(null); this.etape.update((x) => Math.max(0, x - 1)); }
 
   /** Clic sur la carte : on place le repère et on écrit l'adresse et le quartier dans les champs. */
+  private demandeAdresse = 0;
   placer(p: { lat: number; lng: number }) {
     this.pos.set(p);
     this.etatAdresse.set('recherche');
+    // Plusieurs clics rapprochés : seule la réponse du dernier clic compte.
+    const demande = ++this.demandeAdresse;
     this.api.adresse(p.lat, p.lng).subscribe({
       next: (a) => {
+        if (demande !== this.demandeAdresse) return;
         if (a.adresse) this.adresse.set(a.adresse);
         if (a.quartier) this.quartier.set(a.quartier);
         this.etatAdresse.set('ok');
         this.erreur.set(null);
       },
-      error: () => this.etatAdresse.set('erreur'),
+      error: () => { if (demande === this.demandeAdresse) this.etatAdresse.set('erreur'); },
     });
   }
 

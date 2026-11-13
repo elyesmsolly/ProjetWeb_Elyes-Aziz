@@ -65,6 +65,10 @@ Tout tourne en local, sans déploiement.
   - indicateurs (servis, en attente, attente moyenne, taux d'absence) et affluence par heure ;
   - état des postes et file en direct ;
   - pause ou réouverture de la file.
+- **Formulaire créé par l'IA** : le gérant décrit son besoin en une phrase (« Laboratoire : date de naissance, à jeun ou non, type d'ordonnance »).
+  - L'IA propose les champs (sortie structurée), à l'inscription comme dans l'espace pro.
+  - **Notre code contrôle** la proposition : types connus, options valides, longueurs, pas de doublon, nom et téléphone toujours en tête.
+  - Le gérant garde la main : il modifie, annule la proposition ou publie. Sans clé d'IA, des règles par mots-clés prennent le relais.
 - **Constructeur de formulaire** en glisser-déposer (Angular CDK) :
   - palette de 8 types de champs, réordonnancement, champ obligatoire ou non, options, duplication ;
   - modèles prêts (salon, laboratoire, agence) et aperçu en direct ;
@@ -140,26 +144,26 @@ Aucune clé n'est écrite dans le code.
 
 | Variable | Rôle | Défaut |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Clé de l'API Claude pour l'assistant. Sans elle, l'assistant fonctionne en mode local. | (vide) |
+| `ANTHROPIC_API_KEY` | Clé de l'API Claude (assistant de recherche et formulaire par IA) | (vide) |
 | `GEMINI_API_KEY` | Clé gratuite Google Gemini, utilisée s'il n'y a pas de clé Claude | (vide) |
-| `DOUREK_GEMINI_MODELE` | Modèle Gemini | `gemini-flash-latest` |
+| `DOUREK_GEMINI_MODELE` | Modèle Gemini. S'il n'existe plus, le serveur choisit tout seul le modèle « flash » disponible. | `gemini-flash-latest` |
 | `DOUREK_ASSISTANT_MODELE` | Modèle Claude utilisé | `claude-opus-5-5` |
 | `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
 
-**Activer l'IA de l'assistant.** L'IA est appelée par le serveur : il suffit de la configurer une fois sur la machine qui lance le back-end, et elle marche pour tous les visiteurs (ils ne voient jamais la clé). Ordre de choix :
+**Activer l'IA (assistant de recherche et formulaire par IA).** L'IA est appelée par le serveur : il suffit de la configurer une fois sur la machine qui lance le back-end, et elle marche pour tous les visiteurs (ils ne voient jamais la clé). Ordre de choix :
 1. `ANTHROPIC_API_KEY` définie → Claude (payant, https://console.anthropic.com) ;
 2. sinon `GEMINI_API_KEY` définie → **Google Gemini, offre gratuite** ;
-3. sinon → **analyse locale** (mots-clés, quartier, heure, prix), indiquée à l'écran.
+3. sinon → **mode local** (règles par mots-clés), indiqué à l'écran.
 
 Gemini gratuit, pas à pas :
 1. aller sur https://aistudio.google.com/apikey avec un compte Google et cliquer sur « Create API key » ;
 2. dans le terminal du back-end (PowerShell) : `$env:GEMINI_API_KEY="AIza..."` ;
-3. lancer `mvn spring-boot:run` **dans ce même terminal**. Le journal affiche « Assistant de recherche : API Gemini ».
+3. lancer `mvn spring-boot:run` **dans ce même terminal**. Le journal affiche « IA de Dourek (assistant et formulaire) : API Gemini ».
 
 **Sans terminal (pratique pour un correcteur)** : copier `backend/cle-ia.properties.exemple` en `backend/cle-ia.properties` et y coller la clé (`GEMINI_API_KEY=AIza...`). Ce fichier est ignoré par Git : la clé n'est jamais publiée sur GitHub. On le transmet à part (par e-mail par exemple).
 
-L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Si Gemini ne répond pas, l'assistant repasse en analyse locale.
+L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Si Gemini ne répond pas, le serveur repasse en mode local.
 
 **Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
 
@@ -177,8 +181,10 @@ mvn spring-boot:run
 backend/   API Spring Boot (package tn.supcom.dourek)
   model/        entités JPA : Etablissement, Prestation, Formulaire, Ticket, Utilisateur
   repository/   accès aux données (verrou pessimiste pour la file)
-  service/      FileService, FormulaireService, RechercheService, AssistantService, AuthService, TempsReel
-  web/          PublicController (/api), AuthController (/api/auth), ProController (/api/pro), GeoController (/api/geo)
+  service/      FileService, FormulaireService, RechercheService, AssistantService, FormulaireIaService, AuthService, TempsReel,
+                ClaudeClient et GeminiClient (accès aux deux IA)
+  web/          PublicController (/api), AuthController (/api/auth), ProController (/api/pro), GeoController (/api/geo),
+                ErreursApi (erreurs au format { status, message })
   config/       sécurité JWT, WebSocket, données de démo
 frontend/  application Angular
   src/app/core/     modèles, services API, authentification, temps réel
@@ -198,6 +204,7 @@ frontend/  application Angular
 | GET | `/api/categories` | public |
 | GET | `/api/geo/adresse?lat=&lng=` | public (adresse via OpenStreetMap) |
 | POST | `/api/assistant` | public |
+| POST | `/api/assistant/formulaire` | public (propose un formulaire, n'enregistre rien) |
 | POST | `/api/auth/connexion`, `/api/auth/inscription`, `/api/auth/inscription-client` | public |
 | GET / POST | `/api/pro/file`, `/api/pro/file/appeler-suivant`, `/servi`, `/absent`, `/sur-place` | gérant ou employé |
 | GET / POST | `/api/pro/gerant/statistiques`, `/gerant/formulaire`, `/gerant/file/ouverture` | gérant |
@@ -207,6 +214,16 @@ frontend/  application Angular
 
 ## 5. Tests et qualité
 
+### Tests automatiques du back-end (JUnit)
+```bash
+cd backend
+mvn test
+```
+15 tests, sans base de données ni clé d'IA :
+- **formulaire par IA** : contrôle de la proposition du modèle (types, options, doublons, longueurs) et règles du mode sans IA ;
+- **recherche** : catégorie devinée depuis le texte (« coiffeur », « prise de sang »…), mots utiles, critères de l'assistant sans IA ;
+- **Gemini** : choix du modèle quand celui de la configuration n'existe plus.
+
 ### Parcours testés (Playwright, Chrome)
 | Scénario | Résultat |
 |---|---|
@@ -215,6 +232,11 @@ frontend/  application Angular
 | Champ obligatoire vide à la prise de ticket | Refus 400 avec un message clair |
 | Employé qui appelle une route réservée au gérant | Refus 403 |
 | Assistant : « une barbe pas loin, le plus vite possible » | Classement et explication (mode local sans clé) |
+| Le gérant écrit « Laboratoire : date de naissance, à jeun, ordonnance » et clique sur « Proposer un formulaire » | Les champs apparaissent dans le constructeur, « Annuler » rétablit l'ancien formulaire, la publication donne la v4 côté client |
+| IA Gemini (faux serveur de test) : modèle inconnu, schéma refusé, mauvaise clé | Autre modèle choisi, nouvel essai en JSON simple, puis repli en mode local |
+| Client non connecté qui ouvre « Mon ticket » ou une fiche | Renvoi à la connexion, puis retour à la page demandée |
+| Jeton expiré ou compte disparu (base de démo relancée) | Session fermée, renvoi à la connexion, pages publiques toujours lisibles |
+| Carte agrandie sur la recherche, la fiche et l'inscription pro | Elle occupe toute la fenêtre, Échap la referme |
 | Toutes les pages à 390 px (mobile) et 1440 px (bureau) | Aucun débordement horizontal |
 
 ### Audit Lighthouse (build de production, profil mobile)
