@@ -1,0 +1,40 @@
+.hero { padding: 64px 0 40px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+.lead { font-size: 18px; color: var(--muted); margin: 18px 0 28px; max-width: 520px; }
+.searchbox { display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 8px; padding: 8px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.searchbox .input { border-color: transparent; background: var(--surface-2); }
+.searchbox .input:focus { background: var(--surface); }
+.assist { margin-top: 14px; }
+
+.mock { display: grid; place-items: center; }
+.phonecard { width: min(100%, 400px); padding: 36px; border-radius: 24px; text-align: center; box-shadow: 0 30px 60px -30px rgba(19,36,22,.5); display: flex; flex-direction: column; align-items: center; gap: 16px;
+  animation: carte-in 700ms var(--ease-out) 120ms both; }
+.phonecard b { color: #fff; }
+.phonecard .progress { width: 100%; background: #22362a; }
+.phonecard .progress > span { background: var(--accent); }
+.bignum { font-size: clamp(88px, 11vw, 120px); }
+@keyframes carte-in { from { opacity: 0; transform: translateY(16px) rotate(-1.5deg); } }
+
+section { margin-top: 56px; }
+.head { margin-bottom: 20px; }
+.more { color: var(--primary); font-weight: 600; }
+.cats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+.cat { text-align: center; padding: 20px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.cat .ic { width: 48px; height: 48px; border-radius: 14px; margin-bottom: 10px; display: grid; place-items: center; background: var(--surface-2); color: var(--primary); }
+.near { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.near .meta { margin: 4px 0 14px; }
+.near h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cta { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 36px 40px; background: var(--primary); color: #fff; border: none; }
+.cta p { color: #bdceac; margin-top: 6px; }
+
+@media (max-width: 1000px) {
+  .hero { grid-template-columns: 1fr; padding-top: 40px; }
+  .cats { grid-template-columns: repeat(3, 1fr); }
+  .near { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .searchbox { grid-template-columns: 1fr; }
+  .cats { grid-template-columns: repeat(2, 1fr); }
+  .near { grid-template-columns: 1fr; }
+  .cta { flex-direction: column; align-items: flex-start; padding: 28px 24px; }
+  .mock { display: none; }
+}

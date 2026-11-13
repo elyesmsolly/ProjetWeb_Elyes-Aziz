@@ -1,0 +1,86 @@
+<div class="container page">
+  @if (erreur()) {
+    <div class="card vide"><h2>{{ erreur() }}</h2><a class="btn" routerLink="/etablissements" style="margin-top:16px">Voir les établissements</a></div>
+  } @else if (detail(); as d) {
+    @let r = d.resume;
+    <nav class="small muted fil" aria-label="Fil d’Ariane">
+      <a routerLink="/etablissements">Établissements</a> › <a routerLink="/etablissements" [queryParams]="{ categorie: r.categorie }">{{ r.categorieLibelle }}</a> › <b>{{ r.nom }}</b>
+    </nav>
+    <div class="cover thumb"><app-icon [name]="fmt.icone(r.categorie)" [size]="64" /></div>
+
+    <div class="layout">
+      <div class="col" style="gap:24px">
+        <div class="row between wrap titre">
+          <div>
+            <h1>{{ r.nom }}</h1>
+            <div class="meta small muted">
+              <span><app-icon [name]="fmt.icone(r.categorie)" [size]="14" />{{ r.categorieLibelle }}</span>
+              <span><app-icon name="pin" [size]="14" />{{ r.adresse }} · {{ fmt.distance(r.distanceKm) }}</span>
+              <span><app-icon name="star" [size]="14" />{{ fmt.note(r.note) }} ({{ r.nombreAvis }} avis)</span>
+            </div>
+          </div>
+          @if (r.fileOuverte) {
+            <span class="badge ok etat"><span class="dot live"></span>Ouvert · ferme à {{ r.heureFermeture }} h</span>
+          } @else {
+            <span class="badge danger etat">File en pause</span>
+          }
+        </div>
+        @if (d.description) { <p class="muted">{{ d.description }}</p> }
+
+        <div class="card live" aria-live="polite">
+          <div><div class="v">{{ r.personnesEnAttente }}</div><div class="small muted">personne{{ r.personnesEnAttente > 1 ? 's' : '' }} en attente</div></div>
+          <div><div class="v">~{{ r.attenteMinutes }} min</div><div class="small muted">attente estimée</div></div>
+          <div><div class="v">{{ r.postesOuverts }}</div><div class="small muted">poste{{ r.postesOuverts > 1 ? 's' : '' }} ouvert{{ r.postesOuverts > 1 ? 's' : '' }}</div></div>
+        </div>
+
+        <div>
+          <h2 class="etape">1. Choisissez une prestation</h2>
+          <div class="col" style="gap:10px" role="radiogroup" aria-label="Prestation">
+            @for (p of r.prestations; track p.id) {
+              <button type="button" role="radio" class="svc" [class.on]="prestationId() === p.id" [attr.aria-checked]="prestationId() === p.id" (click)="prestationId.set(p.id)">
+                <span class="radio"></span>
+                <span class="nom"><b>{{ p.nom }}</b>@if (p.description) { <span class="small muted">{{ p.description }}</span> }</span>
+                <span class="small muted">~{{ p.dureeMinutes }} min</span>
+                <b>{{ fmt.prix(p.prix) }}</b>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:10px">Infos pratiques</h3>
+          <div class="row infos">
+            <div class="small grow horaires"><b>Horaires</b>@for (l of horaires(); track $index) { <div>{{ l }}</div> }
+              @if (d.telephone) { <div style="margin-top:8px"><b>Téléphone</b><div>{{ d.telephone }}</div></div> }
+            </div>
+            <app-carte class="mini-carte" [reperes]="reperes()" [moi]="null" [zoom]="15" />
+          </div>
+        </div>
+      </div>
+
+      <form class="card sticky form" (ngSubmit)="prendreTicket()" novalidate>
+        <h2>2. Vos informations</h2>
+        <div class="small muted sous">Formulaire demandé par {{ r.nom }} · v{{ d.formulaire.version }}</div>
+        @for (c of d.formulaire.champs; track c.cle) {
+          <app-champ class="field" [champ]="c" [valeur]="reponses()[c.cle]" (valeurChange)="repondre(c.cle, $event)" />
+        }
+        <label class="row small prio">
+          <input type="checkbox" name="prioritaire" [ngModel]="prioritaire()" (ngModelChange)="prioritaire.set($event)" />
+          Je suis prioritaire (âge, grossesse, handicap)
+        </label>
+        <div class="divider"></div>
+        <div class="row between small resume">
+          <span class="muted">{{ prestation()?.nom }} · passage estimé</span><b>vers {{ passage() }}</b>
+        </div>
+        @if (erreurForm()) { <p class="error" role="alert">{{ erreurForm() }}</p> }
+        <button class="btn lg block" type="submit" [disabled]="envoi() || !r.fileOuverte">
+          {{ r.fileOuverte ? 'Prendre mon ticket' : 'File en pause' }} <app-icon name="ticket" />
+        </button>
+        <div class="small muted centre">Gratuit · vous pourrez annuler à tout moment</div>
+      </form>
+    </div>
+  } @else {
+    <div class="skeleton" style="height:220px;margin-top:24px;border-radius:16px"></div>
+    <div class="layout"><div class="skeleton" style="height:400px"></div><div class="skeleton" style="height:500px"></div></div>
+  }
+</div>
