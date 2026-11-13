@@ -1,3 +1,19 @@
+/* Création par l'IA : même carte que l'assistant de recherche */
+:host { display: flex; flex-direction: column; gap: 20px; }
+.ia { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; padding: 20px; background: linear-gradient(120deg, #eaf1e0, #fff1e6); border-color: #d7e2cc; }
+.bot { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--primary); color: #fff; }
+.ia-corps { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ia h3 { font-size: 17px; }
+.ia-saisie { display: flex; gap: 10px; align-items: stretch; }
+.ia-saisie textarea { flex: 1; height: 64px; min-height: 48px; background: var(--surface); }
+.ia-saisie .btn { height: auto; min-height: 48px; white-space: nowrap; }
+.exemples, .ia-resultat { gap: 8px; align-items: center; }
+.exemples .chip { height: auto; min-height: 32px; padding-block: 6px; text-align: left; white-space: normal; font-size: 13px; }
+.ia-resultat { animation: page-in 320ms var(--ease-out) both; }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: tourne 700ms linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } }
+
 .builder { display: grid; grid-template-columns: 220px 1fr 380px; gap: 20px; align-items: start; }
 .palette { padding: 16px; position: sticky; top: 16px; }
 .titre-col { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
@@ -54,6 +70,8 @@
 }
 @media (max-width: 1200px) { .builder { grid-template-columns: 200px 1fr; } .apercu-col { grid-column: 1 / -1; } .mini { position: static; } }
 @media (max-width: 700px) {
+  .ia { grid-template-columns: 1fr; padding: 16px; }
+  .ia-saisie { flex-direction: column; }
   .builder { grid-template-columns: 1fr; }
   .palette { position: static; }
   .outils { display: grid; grid-template-columns: 1fr 1fr; }

@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   AssistantReponse, Categorie, ChampFormulaire, EtablissementDetail, EtablissementResume, EtatFile,
-  Formulaire, Inscription, Session, Statistiques, TicketVue,
+  Formulaire, FormulairePropose, Inscription, Session, Statistiques, TicketVue,
 } from './models';
 import { PositionService } from './position.service';
 
@@ -47,6 +47,11 @@ export class ApiService {
   assistant(message: string): Observable<AssistantReponse> {
     const p = this.position.coords();
     return this.http.post<AssistantReponse>('/api/assistant', { message, lat: p?.lat ?? null, lng: p?.lng ?? null });
+  }
+
+  /** Demande à l'IA de proposer un formulaire client (rien n'est enregistré : le gérant publie lui-même). */
+  proposerFormulaire(description: string, etablissement: string, activite: string): Observable<FormulairePropose> {
+    return this.http.post<FormulairePropose>('/api/assistant/formulaire', { description, etablissement, activite });
   }
 
   // ---- espace pro

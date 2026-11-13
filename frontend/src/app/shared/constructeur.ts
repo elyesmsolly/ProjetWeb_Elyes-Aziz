@@ -1,7 +1,8 @@
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPlaceholder, CdkDragPreview, CdkDropList, CdkDropListGroup, copyArrayItem, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, input, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ChampFormulaire, TypeChamp } from '../core/models';
+import { ApiService, messageErreur } from '../core/api.service';
+import { ChampFormulaire, FormulairePropose, TypeChamp } from '../core/models';
 import { Champ } from './champ';
 import { Icon } from './icon';
 
@@ -34,9 +35,16 @@ export function nouveauChamp(type: TypeChamp): ChampFormulaire {
   };
 }
 
+const EXEMPLES_IA = [
+  'Laboratoire d’analyses : date de naissance, à jeun ou non, type d’ordonnance',
+  'Salon de coiffure : coiffeur préféré et une remarque',
+  'Garage auto : immatriculation, marque de la voiture, motif de la visite',
+];
+
 /**
  * Constructeur de formulaire en glisser-déposer (Angular CDK) :
  * on glisse un type de champ depuis la palette (copyArrayItem), on réordonne les champs (moveItemInArray).
+ * Le gérant peut aussi décrire son besoin en une phrase : l'IA propose les champs, qu'il modifie ensuite librement.
  */
 @Component({
   selector: 'app-constructeur',
@@ -49,12 +57,54 @@ export class Constructeur {
   readonly champs = model.required<ChampFormulaire[]>();
   readonly nomEtablissement = input('Votre établissement');
   readonly adresse = input('localhost:4200/etablissements/votre-salon');
+  /** Type d'activité (ex. « Laboratoire »), transmis à l'IA pour de meilleures propositions. */
+  readonly activite = input('');
+
+  private api = inject(ApiService);
 
   protected readonly outils = OUTILS;
   protected readonly selection = signal<string | null>(null);
   protected readonly reponsesApercu = signal<Record<string, unknown>>({});
   protected readonly annonce = signal('');
   protected readonly selectionne = computed(() => this.champs().find((c) => c.cle === this.selection()) ?? null);
+
+  // ---- création par l'IA
+  protected readonly exemplesIa = EXEMPLES_IA;
+  protected readonly description = signal('');
+  protected readonly generation = signal(false);
+  protected readonly erreurIa = signal<string | null>(null);
+  /** Dernière proposition appliquée, avec le formulaire d'avant pour pouvoir l'annuler. */
+  protected readonly proposition = signal<{ source: FormulairePropose['source']; ajoutes: number; avant: ChampFormulaire[] } | null>(null);
+
+  proposer() {
+    const description = this.description().trim();
+    if (description.length < 3 || this.generation()) return;
+    this.generation.set(true);
+    this.erreurIa.set(null);
+    this.api.proposerFormulaire(description, this.nomEtablissement(), this.activite()).subscribe({
+      next: (p) => {
+        const ajoutes = p.champs.filter((c) => !VERROUILLES.has(c.cle)).length;
+        // On garde le formulaire du tout premier essai : « Annuler » y revient même après plusieurs propositions.
+        this.proposition.set({ source: p.source, ajoutes, avant: this.proposition()?.avant ?? this.champs() });
+        this.champs.set(p.champs);
+        this.selection.set(null);
+        this.reponsesApercu.set({});
+        this.generation.set(false);
+        this.annonce.set(`Formulaire proposé : ${ajoutes} champ${ajoutes > 1 ? 's' : ''} en plus du nom et du téléphone.`);
+      },
+      error: (e) => { this.erreurIa.set(messageErreur(e)); this.generation.set(false); },
+    });
+  }
+
+  annulerProposition() {
+    const p = this.proposition();
+    if (!p) return;
+    this.champs.set(p.avant);
+    this.selection.set(null);
+    this.reponsesApercu.set({});
+    this.proposition.set(null);
+    this.annonce.set('Proposition annulée : votre formulaire précédent est rétabli.');
+  }
 
   verrouille(c: ChampFormulaire) { return VERROUILLES.has(c.cle); }
   outil(type: TypeChamp) { return OUTILS.find((o) => o.type === type)!; }

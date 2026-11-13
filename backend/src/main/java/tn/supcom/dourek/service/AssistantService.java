@@ -1,8 +1,5 @@
 package tn.supcom.dourek.service;
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.StopReason;
@@ -17,7 +14,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tn.supcom.dourek.dto.Dtos.*;
 import tn.supcom.dourek.model.Categorie;
@@ -52,38 +48,35 @@ public class AssistantService {
             boolean petitPrix) {}
 
     private final RechercheService recherche;
-    private final AnthropicClient client;
-    private final String modele;
+    private final ClaudeClient claude;
     private final GeminiClient gemini;
 
-    public AssistantService(RechercheService recherche, GeminiClient gemini,
-                            @Value("${dourek.assistant.modele}") String modele,
-                            @Value("${ANTHROPIC_API_KEY:}") String cle) {
+    public AssistantService(RechercheService recherche, ClaudeClient claude, GeminiClient gemini) {
         this.recherche = recherche;
+        this.claude = claude;
         this.gemini = gemini;
-        this.modele = modele;
-        // La clé n'est jamais écrite dans le code : elle vient de l'environnement.
-        this.client = cle.isBlank() ? null : AnthropicOkHttpClient.builder().apiKey(cle).build();
-        log.info("Assistant de recherche : {}", client != null ? "API Claude, modèle " + modele
+        log.info("IA de Dourek (assistant et formulaire) : {}", claude.actif() ? "API Claude, modèle " + claude.modele()
                 : gemini.actif() ? "API Gemini, modèle " + gemini.modele()
                 : "mode local (ni ANTHROPIC_API_KEY ni GEMINI_API_KEY)");
     }
 
     public boolean iaDisponible() {
-        return client != null || gemini.actif();
+        return claude.actif() || gemini.actif();
     }
 
     public AssistantReponse repondre(AssistantRequest req) {
         Criteres criteres = null;
         String source = "local";
-        if (client != null) {
+        if (claude.actif()) {
             try {
                 criteres = extraireAvecIA(req.message());
                 source = "claude";
             } catch (RuntimeException ex) {
-                log.warn("Assistant : appel à l'API impossible ({}), analyse locale", ex.getMessage());
+                log.warn("Assistant : appel à Claude impossible ({})", ex.getMessage());
             }
-        } else if (gemini.actif()) {
+        }
+        // Pas de clé Claude, ou Claude injoignable : on essaie Gemini s'il est configuré.
+        if (criteres == null && gemini.actif()) {
             try {
                 criteres = extraireAvecGemini(req.message());
                 source = "gemini";
@@ -187,13 +180,13 @@ public class AssistantService {
 
     private Criteres extraireAvecIA(String message) {
         StructuredMessageCreateParams<CriteresExtraits> params = MessageCreateParams.builder()
-                .model(modele)
+                .model(claude.modele())
                 .maxTokens(2000L)
                 .system(CONSIGNE_EXTRACTION)
                 .outputConfig(CriteresExtraits.class)
                 .addUserMessage(message)
                 .build();
-        CriteresExtraits x = client.messages().create(params).content().stream()
+        CriteresExtraits x = claude.api().messages().create(params).content().stream()
                 .flatMap(b -> b.text().stream())
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("réponse vide"))
@@ -215,12 +208,12 @@ public class AssistantService {
 
     private String expliquerAvecIA(String message, Criteres c, List<EtablissementResume> res) {
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(modele)
+                .model(claude.modele())
                 .maxTokens(1000L)
                 .system(CONSIGNE_EXPLICATION)
                 .addUserMessage(demandeEtClassement(message, res))
                 .build();
-        Message m = client.messages().create(params);
+        Message m = claude.api().messages().create(params);
         if (m.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) return null;
         String texte = m.content().stream().flatMap(b -> b.text().stream()).map(t -> t.text())
                 .collect(Collectors.joining()).trim();
