@@ -1,0 +1,4 @@
+# Copiez ce fichier en « cle-ia.properties » (dans ce dossier backend) et collez votre clé.
+# Ce fichier n'est jamais envoyé sur GitHub (.gitignore).
+# Clé gratuite : https://aistudio.google.com/apikey
+GEMINI_API_KEY=

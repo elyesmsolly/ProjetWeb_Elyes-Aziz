@@ -157,6 +157,8 @@ Gemini gratuit, pas à pas :
 2. dans le terminal du back-end (PowerShell) : `$env:GEMINI_API_KEY="AIza..."` ;
 3. lancer `mvn spring-boot:run` **dans ce même terminal**. Le journal affiche « Assistant de recherche : API Gemini ».
 
+**Sans terminal (pratique pour un correcteur)** : copier `backend/cle-ia.properties.exemple` en `backend/cle-ia.properties` et y coller la clé (`GEMINI_API_KEY=AIza...`). Ce fichier est ignoré par Git : la clé n'est jamais publiée sur GitHub. On le transmet à part (par e-mail par exemple).
+
 L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Si Gemini ne répond pas, l'assistant repasse en analyse locale.
 
 **Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
