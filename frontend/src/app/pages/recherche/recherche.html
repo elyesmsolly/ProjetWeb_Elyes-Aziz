@@ -1,0 +1,117 @@
+<div class="container page">
+  <div class="row between wrap top">
+    <div>
+      <h2>{{ titre() }}</h2>
+      <div class="muted small">{{ ouverts() }} établissement{{ ouverts() > 1 ? 's' : '' }} ouvert{{ ouverts() > 1 ? 's' : '' }} · attente mise à jour en direct</div>
+    </div>
+    <div class="toggle" role="tablist" aria-label="Affichage">
+      <button role="tab" [class.on]="vue() === 'liste'" [attr.aria-selected]="vue() === 'liste'" (click)="vue.set('liste')"><app-icon name="list" [size]="14" />Liste</button>
+      <button role="tab" [class.on]="vue() === 'carte'" [attr.aria-selected]="vue() === 'carte'" (click)="vue.set('carte')"><app-icon name="map" [size]="14" />Carte</button>
+    </div>
+  </div>
+
+  <div class="row wrap filtres">
+    @for (c of categories; track c.code) {
+      <button class="chip" [class.on]="categorie() === c.code" (click)="choisirCategorie(c.code)">{{ c.libelle }}</button>
+    }
+    <span class="sep"></span>
+    <button class="chip" [class.on]="filtres().ouvert" (click)="basculer('ouvert')">Ouvert maintenant</button>
+    <button class="chip" [class.on]="filtres().attente20" (click)="basculer('attente20')">Attente &lt; 20 min</button>
+    <button class="chip" [class.on]="filtres().km1" (click)="basculer('km1')">&lt; 1 km</button>
+    <button class="chip" [class.on]="filtres().note4" (click)="basculer('note4')">★ 4+</button>
+    <label class="tri">
+      <span class="sr-only">Trier</span>
+      <select class="input" [ngModel]="tri()" (ngModelChange)="tri.set($event)">
+        <option value="score">Trier : meilleur choix</option>
+        <option value="attente">Trier : attente</option>
+        <option value="distance">Trier : distance</option>
+        <option value="note">Trier : avis</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="layout" [class.carte-seule]="vue() === 'carte'">
+    <div class="col liste">
+      <div class="card ai" id="assistant">
+        <div class="bot"><app-icon name="spark" /></div>
+        <div class="grow">
+          <form class="ask" (ngSubmit)="demander()">
+            <label class="sr-only" for="q-ia">Votre demande</label>
+            <input id="q-ia" class="input" name="q" [ngModel]="question()" (ngModelChange)="question.set($event)" maxlength="500"
+              placeholder="« Une coupe avant 18 h près de l’Ariana, pas trop cher »" autocomplete="off" />
+            <button class="btn sm" type="submit" [disabled]="reflechit() || !question().trim()" aria-label="Demander à l’assistant">
+              @if (reflechit()) { <span class="spinner"></span> } @else { <app-icon name="arrow" [size]="16" /> }
+            </button>
+          </form>
+          @if (reponse(); as r) {
+            <p class="reponse"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
+            @if (r.resultats.length) {
+              <div class="row wrap propositions">
+                @for (e of r.resultats; track e.id; let i = $index) {
+                  <a class="chip" [class.on]="i === 0" [routerLink]="['/etablissements', e.slug]">{{ i + 1 }}. {{ e.nom }} · ~{{ e.attenteMinutes }} min</a>
+                }
+              </div>
+            }
+          } @else if (reflechit()) {
+            <p class="reponse muted">L’assistant analyse votre demande…</p>
+          } @else {
+            <p class="reponse muted">Décrivez votre besoin en une phrase : prestation, heure, quartier, budget.</p>
+          }
+          <div class="small muted note">
+            Classement calculé par Dourek (distance, attente, avis). L’assistant explique, il ne décide pas.
+            @if (reponse()?.source === 'local') { <span>(mode hors ligne)</span> }
+          </div>
+        </div>
+      </div>
+
+      @if (erreur()) {
+        <div class="card"><p class="error">{{ erreur() }}</p><button class="btn ghost sm" style="margin-top:12px" (click)="charger()">Réessayer</button></div>
+      } @else if (tous() === null) {
+        @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height:130px"></div> }
+      } @else {
+        @for (e of resultats(); track e.id; let i = $index) {
+          <a class="card res" [class.best]="e.meilleurChoix" [class.ferme]="!e.fileOuverte" [routerLink]="['/etablissements', e.slug]"
+             (mouseenter)="selection.set(e.id)">
+            <div class="thumb" [class.v2]="i % 3 === 1" [class.v3]="i % 3 === 2"><app-icon [name]="fmt.icone(e.categorie)" [size]="32" /></div>
+            <div class="info">
+              <div class="row wrap" style="gap:8px"><h3>{{ e.nom }}</h3>@if (e.meilleurChoix) { <span class="badge primary">Meilleur choix</span> }</div>
+              <div class="meta">
+                <span><app-icon name="pin" [size]="14" />{{ fmt.distance(e.distanceKm) }}</span>
+                <span><app-icon name="star" [size]="14" />{{ fmt.note(e.note) }} ({{ e.nombreAvis }})</span>
+                <span><app-icon name="clock" [size]="14" />{{ e.fileOuverte ? 'Ouvert · ferme ' + e.heureFermeture + ' h' : 'File en pause' }}</span>
+              </div>
+              @if (e.fileOuverte) {
+                <div class="row wrap services">
+                  @for (p of services(e); track p.id) { <span class="badge">{{ p.nom }} {{ p.dureeMinutes }} min</span> }
+                  <span class="badge">{{ e.postesOuverts }} poste{{ e.postesOuverts > 1 ? 's' : '' }}</span>
+                </div>
+              }
+            </div>
+            <div class="wait">
+              @if (e.fileOuverte) {
+                <div class="small muted">Attente</div>
+                <div class="v" [class]="'c-' + fmt.badgeAttente(e.attenteMinutes)">~{{ e.attenteMinutes }} min</div>
+                <div class="small muted">{{ e.personnesEnAttente }} personne{{ e.personnesEnAttente > 1 ? 's' : '' }}</div>
+                <span class="btn sm">Rejoindre</span>
+              } @else {
+                <span class="badge danger">Fermé aux tickets</span>
+              }
+            </div>
+          </a>
+        } @empty {
+          <div class="card vide"><h3>Aucun établissement ne correspond</h3><p class="muted small">Retirez un filtre ou demandez à l’assistant.</p></div>
+        }
+      }
+    </div>
+
+    <div class="mapbox card">
+      <app-carte [reperes]="reperes()" [moi]="position.actuelle()" (choisir)="choisirSurCarte($event)" />
+      @if (choisi(); as c) {
+        <div class="card apercu">
+          <div class="grow"><b>{{ c.nom }}</b><div class="small muted">{{ fmt.distance(c.distanceKm) }} · ~{{ c.attenteMinutes }} min · {{ c.personnesEnAttente }} personne{{ c.personnesEnAttente > 1 ? 's' : '' }}</div></div>
+          <button class="btn sm" (click)="ouvrir(c.slug)" [disabled]="!c.fileOuverte">Rejoindre</button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,75 @@
+<div class="container">
+  <section class="hero">
+    <div class="hero-text page-enter">
+      <h1>Faites la queue<br />depuis chez vous.</h1>
+      <p class="lead">Trouvez l’établissement le plus proche avec la plus courte attente, prenez votre ticket à distance et arrivez juste à temps.</p>
+      <form class="searchbox" (ngSubmit)="rechercher()">
+        <label class="input-icon">
+          <span class="sr-only">Quel service ?</span>
+          <app-icon name="search" />
+          <input class="input lg" name="service" [ngModel]="service()" (ngModelChange)="service.set($event)" placeholder="Quel service ?" />
+        </label>
+        <label class="input-icon">
+          <span class="sr-only">Où ?</span>
+          <app-icon name="pin" />
+          <input class="input lg" name="lieu" [ngModel]="lieu()" (ngModelChange)="lieu.set($event)" />
+        </label>
+        <button class="btn lg" type="submit">Rechercher</button>
+      </form>
+      <div class="row wrap assist">
+        <span class="small muted">Ou demandez à l’assistant :</span>
+        <button class="chip" type="button" (click)="demanderAssistant()"><app-icon name="spark" [size]="14" />« {{ exemple }} »</button>
+      </div>
+    </div>
+
+    <div class="mock" aria-hidden="true">
+      <div class="phonecard led">
+        <div class="small muted">Votre ticket chez Salon Karim</div>
+        <div class="led-num bignum">B‑24</div>
+        <span class="badge ok"><span class="dot live"></span>3 personnes avant vous</span>
+        <div class="progress"><span style="width:70%"></span></div>
+        <div class="small muted">Passage estimé vers <b>14 h 35</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="row between head"><h2>Que cherchez-vous ?</h2><a class="small more" routerLink="/etablissements">Toutes les catégories →</a></div>
+    <div class="cats">
+      @for (c of categories(); track c.code) {
+        <a class="card cat" routerLink="/etablissements" [queryParams]="{ categorie: c.code }">
+          <div class="ic"><app-icon [name]="iconeCategorie(c.code)" [size]="24" /></div>
+          <b>{{ c.libelle }}</b>
+          <div class="small muted">{{ c.nombre ? c.nombre + " près de vous" : "Voir tout" }}</div>
+        </a>
+      } @empty {
+        @for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="card cat skeleton" style="height:128px"></div> }
+      }
+    </div>
+  </section>
+
+  <section>
+    <div class="row between head"><h2>Près de vous maintenant</h2><a class="btn ghost sm" routerLink="/etablissements" [queryParams]="{ vue: 'carte' }">Voir la carte <app-icon name="map" [size]="16" /></a></div>
+    @if (proches() === null) {
+      <p class="card muted">Impossible de joindre le serveur. Lancez l’API Spring Boot (voir le README).</p>
+    } @else {
+      <div class="near">
+        @for (e of (proches() ?? []).slice(0, 3); track e.id; let i = $index) {
+          <a class="card" [routerLink]="['/etablissements', e.slug]">
+            <div class="thumb" [class.v2]="i === 1" [class.v3]="i === 2" style="height:140px;margin-bottom:14px"><app-icon [name]="fmt.icone(e.categorie)" [size]="44" /></div>
+            <div class="row between"><h3>{{ e.nom }}</h3><span class="badge" [class]="fmt.badgeAttente(e.attenteMinutes)">~{{ e.attenteMinutes }} min</span></div>
+            <div class="small muted meta">{{ e.categorieLibelle }} · {{ fmt.distance(e.distanceKm) }} · ★ {{ fmt.note(e.note) }}</div>
+            <span class="btn block">Rejoindre la file</span>
+          </a>
+        } @empty {
+          @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height:280px"></div> }
+        }
+      </div>
+    }
+  </section>
+
+  <section class="card cta">
+    <div><h2>Vous êtes gérant ?</h2><p>Créez votre file et votre formulaire en moins de 10 minutes, sans matériel.</p></div>
+    <a class="btn accent lg" routerLink="/pro/inscription">Créer mon établissement</a>
+  </section>
+</div>
