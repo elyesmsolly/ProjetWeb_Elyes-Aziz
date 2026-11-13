@@ -1,0 +1,28 @@
+:host { display: block; min-height: 100vh; }
+.topbar { min-height: 72px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; padding: 12px 32px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.topbar .logo { margin-right: 8px; }
+.droite { margin-left: auto; gap: 10px; flex-wrap: wrap; }
+.avatar { border: none; transition: transform var(--t-press) var(--ease-out); }
+.avatar:active { transform: scale(0.95); }
+.ecran { display: grid; grid-template-columns: 1fr 400px; gap: 24px; padding: 24px 32px; }
+.current { text-align: center; padding: 36px; border-radius: var(--radius-lg); min-height: 360px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
+.current b { color: #fff; }
+.timer { font-variant-numeric: tabular-nums; }
+.num { font-size: clamp(88px, 12vw, 120px); margin: 12px 0; animation: numero 260ms var(--ease-out); }
+.num.vide { color: #4a5c4d; text-shadow: none; animation: none; }
+@keyframes numero { from { opacity: 0; transform: translateY(10px) scale(.98); filter: blur(3px); } }
+.nom { font-size: 20px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+.answers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; text-align: left; width: 100%; }
+.answers > div { background: rgba(233,239,224,.08); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.actions .next { grid-column: 1 / -1; height: 120px; font-size: clamp(22px, 3vw, 30px); background: var(--accent); border-color: var(--accent); color: var(--text); }
+.qi { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+.qi:last-of-type { border-bottom: none; }
+.qi .n { font-family: var(--font-display); font-weight: 800; font-size: 18px; }
+.vide-liste, .plus { padding: 14px 0 0; }
+.chips { gap: 8px; margin: 12px 0; }
+.prio { margin-bottom: 12px; }
+.prio input { width: 18px; height: 18px; accent-color: var(--primary); }
+@media (hover: hover) { .actions .next:hover:not(:disabled) { background: #ff7f38; border-color: #ff7f38; } }
+@media (max-width: 1000px) { .ecran { grid-template-columns: 1fr; padding: 16px; } .topbar { padding: 12px 16px; } .resume { display: none; } }
+@media (max-width: 640px) { .answers { grid-template-columns: 1fr; } .actions .btn.xl:not(.next) { height: 72px; font-size: 20px; } }

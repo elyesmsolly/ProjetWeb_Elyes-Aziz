@@ -1,0 +1,75 @@
+<div class="topbar">
+  <div><h2>Tableau de bord</h2><div class="small muted">{{ auth.session()?.etablissementNom }} · aujourd’hui, {{ aujourdhui | date: 'EEEE d MMMM' }}</div></div>
+  @if (etat(); as e) {
+    <span class="badge" [class.ok]="e.fileOuverte" [class.danger]="!e.fileOuverte"><span class="dot" [class.live]="e.fileOuverte"></span>{{ e.fileOuverte ? 'File ouverte' : 'File en pause' }}</span>
+  }
+  <div class="row wrap actions">
+    <button class="btn ghost sm" (click)="pause()"><app-icon [name]="etat()?.fileOuverte === false ? 'play' : 'pause'" [size]="14" />{{ etat()?.fileOuverte === false ? 'Rouvrir la file' : 'Mettre en pause' }}</button>
+    <a class="btn sm" routerLink="/pro/employe"><app-icon name="monitor" [size]="14" />Ouvrir l’écran employé</a>
+    <span class="avatar" aria-hidden="true">{{ auth.session()?.nom?.[0] }}</span>
+  </div>
+</div>
+
+<div class="main">
+  @if (stats(); as s) {
+    <div class="kpis">
+      <div class="card kpi"><div class="t">Clients servis</div><div class="v">{{ s.servis }}</div><div class="small muted">depuis l’ouverture</div></div>
+      <div class="card kpi"><div class="t">En attente maintenant</div><div class="v">{{ etat()?.enAttente?.length ?? s.enAttente }}</div><div class="small muted">{{ etat()?.postesOuverts }} poste(s) ouvert(s)</div></div>
+      <div class="card kpi"><div class="t">Attente moyenne</div><div class="v">{{ s.attenteMoyenneMinutes }} min</div><div class="small muted">entre le ticket et l’appel</div></div>
+      <div class="card kpi"><div class="t">Taux d’absence</div><div class="v">{{ s.tauxAbsence }} %</div>
+        <div class="trend" [class.mauvais]="s.tauxAbsence >= 10">Objectif &lt; 10 % {{ s.tauxAbsence < 10 ? '✓' : '' }}</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="row between" style="margin-bottom:8px"><h3>Affluence par heure</h3><span class="chip on">Aujourd’hui</span></div>
+        <div class="bars" role="img" [attr.aria-label]="'Tickets pris par heure aujourd’hui'">
+          @for (a of s.affluence; track a.heure) {
+            <div class="bar" [class.now]="a.heure === heureActuelle" [class.futur]="a.heure > heureActuelle"
+                 [style.height.%]="a.heure > heureActuelle ? 6 : 6 + (a.nombre / maxAffluence()) * 94" [attr.title]="a.heure + ' h : ' + a.nombre + ' tickets'">
+              @if (a.nombre > 0 && a.heure <= heureActuelle) { <span>{{ a.nombre }}</span> }
+            </div>
+          }
+        </div>
+        <div class="hours">@for (a of s.affluence; track a.heure) { <span>{{ a.heure }}h</span> }</div>
+        <div class="small muted" style="margin-top:10px">Tickets pris par heure. La barre orange est l’heure en cours.</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:6px">Postes</h3>
+        @for (p of s.postes; track p.poste) {
+          <div class="desk">
+            <span class="avatar">{{ p.employe[0] }}</span>
+            <div><b>{{ p.poste }} · {{ p.employe }}</b>
+              <div class="small muted">{{ p.ticket ? 'Sert ' + p.ticket + ' · ' + p.prestation + ' · ' + p.depuisMinutes + ' min' : 'Aucun client en cours' }}</div></div>
+            <span class="badge" [class.ok]="p.ticket">{{ p.ticket ? 'Actif' : 'Libre' }}</span>
+          </div>
+        }
+        <div class="small muted" style="margin-top:12px">Les employés se connectent avec leur compte et ouvrent l’écran de leur poste.</div>
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <div class="row between head"><h3>File en direct</h3><a class="btn ghost sm" routerLink="/pro/employe"><app-icon name="plus" [size]="14" />Ajouter un client sur place</a></div>
+      <div class="table-wrap">
+        <div class="defile"><table>
+          <thead><tr><th>Ticket</th><th>Client</th><th>Prestation</th><th>Arrivée</th><th>Attente</th><th>Statut</th></tr></thead>
+          <tbody>
+            @for (t of lignes(); track t.code; let i = $index) {
+              <tr [class.passe]="t.statut === 'SERVI' || t.statut === 'ABSENT'">
+                <td><b>{{ t.numero }}</b></td><td>{{ t.nomClient }}@if (t.surPlace) { <span class="small muted"> · sur place</span> }</td>
+                <td>{{ t.prestation }}</td><td>{{ heure(t.creeLe) }}</td><td>{{ attente(t) }}</td>
+                <td><span class="badge" [class]="statut(t, i).cls">{{ statut(t, i).texte }}</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="muted">Aucun ticket pour l’instant.</td></tr>
+            }
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  } @else {
+    <div class="kpis">@for (i of [1, 2, 3, 4]; track i) { <div class="skeleton" style="height:118px"></div> }</div>
+    <div class="skeleton" style="height:300px"></div>
+  }
+</div>

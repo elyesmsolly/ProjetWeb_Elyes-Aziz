@@ -1,0 +1,71 @@
+<div class="topbar">
+  <a class="logo" routerLink="/"><span class="logo-mark">D</span>Dourek</a>
+  <span class="badge primary">{{ monPoste() }}</span>
+  <span class="badge" [class.ok]="enDirect()" [class.warn]="!enDirect()"><span class="dot" [class.live]="enDirect()"></span>{{ enDirect() ? 'Connecté en temps réel' : 'Reconnexion…' }}</span>
+  @if (etat()?.fileOuverte === false) { <span class="badge danger">File en pause</span> }
+  <div class="row droite">
+    @if (etat(); as e) { <span class="small muted resume">{{ e.enAttente.length }} en attente · ~{{ e.dureeMoyenneMinutes }} min par client</span> }
+    @if (auth.gerant()) {
+      <button class="btn ghost sm" (click)="pause()" [disabled]="occupe()"><app-icon [name]="etat()?.fileOuverte === false ? 'play' : 'pause'" [size]="14" />{{ etat()?.fileOuverte === false ? 'Rouvrir' : 'Pause' }}</button>
+      <a class="btn ghost sm" routerLink="/pro/tableau-de-bord"><app-icon name="chart" [size]="14" />Tableau de bord</a>
+    }
+    <button class="avatar" (click)="sortir()" [attr.aria-label]="'Se déconnecter (' + auth.session()?.nom + ')'" title="Se déconnecter">{{ auth.session()?.nom?.[0] }}</button>
+  </div>
+</div>
+
+<div class="ecran">
+  <div class="col" style="gap:20px">
+    <div class="card current led">
+      @if (courant(); as c) {
+        <div class="muted">Client en cours · {{ c.prestation }} · depuis <b class="timer">{{ chrono() }}</b></div>
+        @for (k of [c.code]; track k) {
+          <div class="led-num num">{{ c.numero.replace('-', '‑') }}</div>
+        }
+        <div class="nom">{{ c.nomClient }}@if (c.prioritaire) { <span class="badge warn">Prioritaire</span> }</div>
+        <div class="answers">
+          @for (r of reponses(); track r.label) { <div><div class="muted small">{{ r.label }}</div><b>{{ r.valeur }}</b></div> }
+        </div>
+      } @else {
+        <div class="muted">Aucun client à votre poste</div>
+        <div class="led-num num vide">—</div>
+        <div class="muted">Appuyez sur « Appeler le suivant » pour faire venir le prochain client.</div>
+      }
+    </div>
+    <div class="actions">
+      <button class="btn xl next" (click)="appelerSuivant()" [disabled]="occupe() || (!etat()?.enAttente?.length && !courant())">
+        Appeler le suivant <app-icon name="arrow" [size]="30" />
+      </button>
+      <button class="btn xl ok" (click)="servi()" [disabled]="occupe() || !courant()"><app-icon name="check" [size]="26" />Servi</button>
+      <button class="btn xl danger" (click)="absent()" [disabled]="occupe() || !courant()"><app-icon name="x" [size]="26" />Absent</button>
+    </div>
+  </div>
+
+  <div class="col" style="gap:20px">
+    <div class="card">
+      <div class="row between" style="margin-bottom:4px"><h3>Prochains clients</h3><span class="small muted">Règle : 1 prioritaire / 2</span></div>
+      @for (t of (etat()?.enAttente ?? []).slice(0, 6); track t.code; let i = $index) {
+        <div class="qi">
+          <span class="n">{{ t.numero }}</span>
+          <div class="grow"><b>{{ t.nomClient }}</b><div class="small muted">{{ t.prestation }} · attend depuis {{ attendDepuis(t) }} min</div></div>
+          <span class="badge" [class]="badge(t, i).cls">{{ badge(t, i).texte }}</span>
+        </div>
+      } @empty {
+        <p class="small muted vide-liste">Personne en attente pour le moment.</p>
+      }
+      @if ((etat()?.enAttente?.length ?? 0) > 6) { <div class="small muted plus">+ {{ etat()!.enAttente.length - 6 }} autres</div> }
+    </div>
+
+    <form class="card" (ngSubmit)="ajouterSurPlace()">
+      <h3 style="margin-bottom:12px">Client sans smartphone</h3>
+      <label class="sr-only" for="prenom">Prénom</label>
+      <input id="prenom" class="input" name="prenom" placeholder="Prénom" [ngModel]="nomSurPlace()" (ngModelChange)="nomSurPlace.set($event)" maxlength="60" autocomplete="off" />
+      <div class="row wrap chips" role="radiogroup" aria-label="Prestation">
+        @for (p of etat()?.prestations ?? []; track p.id) {
+          <button type="button" class="chip" role="radio" [attr.aria-checked]="prestationSurPlace() === p.id" [class.on]="prestationSurPlace() === p.id" (click)="prestationSurPlace.set(p.id)">{{ p.nom }}</button>
+        }
+      </div>
+      <label class="row small prio"><input type="checkbox" name="prio" [ngModel]="prioSurPlace()" (ngModelChange)="prioSurPlace.set($event)" />Prioritaire</label>
+      <button class="btn ghost block" type="submit" [disabled]="occupe()"><app-icon name="plus" />Ajouter sur place et donner le n°</button>
+    </form>
+  </div>
+</div>
