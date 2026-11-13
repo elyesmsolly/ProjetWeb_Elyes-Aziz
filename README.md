@@ -41,6 +41,7 @@ Tout tourne en local, sans déploiement.
   - les catégories « Autres » créées par les gérants (ex. Pressing) apparaissent comme filtres.
 - **Carte** (OpenStreetMap + Leaflet, gratuit, sans clé) : bouton plein écran, touche Échap pour fermer.
 - **Assistant de recherche** : « une coupe avant 18 h près de l'Ariana, pas trop cher ».
+  - IA au choix : Claude, ou Google Gemini (gratuit) ; sans clé, analyse locale.
   - L'IA extrait les critères (sortie structurée).
   - **Notre code classe** les établissements selon la distance, l'attente et l'avis.
   - L'IA explique ensuite le classement : elle ne décide pas.
@@ -140,14 +141,23 @@ Aucune clé n'est écrite dans le code.
 | Variable | Rôle | Défaut |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Clé de l'API Claude pour l'assistant. Sans elle, l'assistant fonctionne en mode local. | (vide) |
-| `DOUREK_ASSISTANT_MODELE` | Modèle utilisé | `claude-opus-5-5` |
+| `GEMINI_API_KEY` | Clé gratuite Google Gemini, utilisée s'il n'y a pas de clé Claude | (vide) |
+| `DOUREK_GEMINI_MODELE` | Modèle Gemini | `gemini-flash-latest` |
+| `DOUREK_ASSISTANT_MODELE` | Modèle Claude utilisé | `claude-opus-5-5` |
 | `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
 
-**Pourquoi l'IA « ne marche pas » ?** Sans `ANTHROPIC_API_KEY`, l'assistant tourne en **analyse locale** (mots-clés, quartier, heure, prix) et l'écran l'indique. Pour activer Claude :
-1. créer une clé sur https://console.anthropic.com (payant, crédit nécessaire) ;
-2. la mettre en variable d'environnement **dans le même terminal**, avant de lancer le back-end ;
-3. relancer `mvn spring-boot:run`.
+**Activer l'IA de l'assistant.** L'IA est appelée par le serveur : il suffit de la configurer une fois sur la machine qui lance le back-end, et elle marche pour tous les visiteurs (ils ne voient jamais la clé). Ordre de choix :
+1. `ANTHROPIC_API_KEY` définie → Claude (payant, https://console.anthropic.com) ;
+2. sinon `GEMINI_API_KEY` définie → **Google Gemini, offre gratuite** ;
+3. sinon → **analyse locale** (mots-clés, quartier, heure, prix), indiquée à l'écran.
+
+Gemini gratuit, pas à pas :
+1. aller sur https://aistudio.google.com/apikey avec un compte Google et cliquer sur « Create API key » ;
+2. dans le terminal du back-end (PowerShell) : `$env:GEMINI_API_KEY="AIza..."` ;
+3. lancer `mvn spring-boot:run` **dans ce même terminal**. Le journal affiche « Assistant de recherche : API Gemini ».
+
+L'offre gratuite a une limite de requêtes par minute et Google peut utiliser les échanges pour améliorer ses modèles. Si Gemini ne répond pas, l'assistant repasse en analyse locale.
 
 **Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
 

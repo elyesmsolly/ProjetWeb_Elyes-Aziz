@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,13 +21,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import tn.supcom.dourek.dto.Dtos.*;
 import tn.supcom.dourek.model.Categorie;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Assistant de recherche en langage naturel, en trois temps :
  * 1. le modèle de chat (API Claude) comprend la demande et en extrait des critères ;
  * 2. NOTRE algorithme (RechercheService) filtre et classe les établissements ;
  * 3. le modèle explique le choix en une ou deux phrases.
- * Sans clé API (variable d'environnement ANTHROPIC_API_KEY), un analyseur simple prend le relais.
+ * Modèle utilisé : Claude si ANTHROPIC_API_KEY est définie, sinon Google Gemini (offre gratuite) si
+ * GEMINI_API_KEY est définie, sinon un analyseur simple prend le relais.
  */
 @Service
 public class AssistantService {
@@ -51,19 +54,23 @@ public class AssistantService {
     private final RechercheService recherche;
     private final AnthropicClient client;
     private final String modele;
+    private final GeminiClient gemini;
 
-    public AssistantService(RechercheService recherche,
+    public AssistantService(RechercheService recherche, GeminiClient gemini,
                             @Value("${dourek.assistant.modele}") String modele,
                             @Value("${ANTHROPIC_API_KEY:}") String cle) {
         this.recherche = recherche;
+        this.gemini = gemini;
         this.modele = modele;
         // La clé n'est jamais écrite dans le code : elle vient de l'environnement.
         this.client = cle.isBlank() ? null : AnthropicOkHttpClient.builder().apiKey(cle).build();
-        log.info("Assistant de recherche : {}", client == null ? "mode local (pas de ANTHROPIC_API_KEY)" : "API Claude, modèle " + modele);
+        log.info("Assistant de recherche : {}", client != null ? "API Claude, modèle " + modele
+                : gemini.actif() ? "API Gemini, modèle " + gemini.modele()
+                : "mode local (ni ANTHROPIC_API_KEY ni GEMINI_API_KEY)");
     }
 
     public boolean iaDisponible() {
-        return client != null;
+        return client != null || gemini.actif();
     }
 
     public AssistantReponse repondre(AssistantRequest req) {
@@ -76,14 +83,24 @@ public class AssistantService {
             } catch (RuntimeException ex) {
                 log.warn("Assistant : appel à l'API impossible ({}), analyse locale", ex.getMessage());
             }
+        } else if (gemini.actif()) {
+            try {
+                criteres = extraireAvecGemini(req.message());
+                source = "gemini";
+            } catch (RuntimeException ex) {
+                log.warn("Assistant : appel à Gemini impossible ({}), analyse locale", ex.getMessage());
+            }
         }
         if (criteres == null) criteres = extraireLocalement(req.message());
 
         List<EtablissementResume> resultats = classer(criteres, req.lat(), req.lng());
         String reponse = null;
-        if ("claude".equals(source)) {
+        if (!"local".equals(source)) {
             try {
-                reponse = expliquerAvecIA(req.message(), criteres, resultats);
+                reponse = "gemini".equals(source)
+                        ? gemini.texte(CONSIGNE_EXPLICATION, demandeEtClassement(req.message(), resultats))
+                        : expliquerAvecIA(req.message(), criteres, resultats);
+                if (reponse != null && reponse.isBlank()) reponse = null;
             } catch (RuntimeException ex) {
                 log.warn("Assistant : explication impossible ({})", ex.getMessage());
             }
@@ -125,16 +142,54 @@ public class AssistantService {
         return s;
     }
 
+    private static final String CONSIGNE_EXTRACTION = "Tu analyses la demande d'un client de Dourek, une plateforme tunisienne de files d'attente "
+            + "virtuelles (barbiers, coiffure, laboratoires, agences, administrations). "
+            + "Extrais uniquement les critères présents dans la demande, sans rien inventer. "
+            + "La demande peut être en français, en arabe ou en dialecte tunisien.";
+
+    private static final String CONSIGNE_EXPLICATION = "Tu es l'assistant de Dourek. Le classement ci-dessous a été calculé par Dourek "
+            + "(distance, attente, avis) : tu ne le modifies pas, tu l'expliques. Réponds en français, "
+            + "en deux phrases au plus, sans liste ni titre. Recommande le premier et cite au besoin "
+            + "le deuxième comme alternative. N'invente aucune information absente des données.";
+
+    private static String demandeEtClassement(String message, List<EtablissementResume> res) {
+        String donnees = res.isEmpty() ? "Aucun établissement ne correspond." : res.stream()
+                .map(e -> String.format(Locale.FRANCE, "%d. %s (%s, %s) : %.1f km, attente ~%d min, %d personnes, note %.1f, ferme à %d h, prix dès %.0f DT",
+                        res.indexOf(e) + 1, e.nom(), e.categorieLibelle(), e.quartier(), e.distanceKm(), e.attenteMinutes(),
+                        e.personnesEnAttente(), e.note(), e.heureFermeture(),
+                        e.prestations().stream().mapToDouble(PrestationDto::prix).min().orElse(0)))
+                .collect(Collectors.joining("\n"));
+        return "Demande du client : « " + message + " »\n\nClassement Dourek :\n" + donnees;
+    }
+
+    // ------------------------------------------------------------------ API Gemini (offre gratuite)
+
+    /** Schéma JSON des critères pour la sortie structurée de Gemini. */
+    private static final Map<String, Object> SCHEMA_GEMINI = Map.of(
+            "type", "OBJECT",
+            "properties", Map.of(
+                    "categorie", Map.of("type", "STRING", "description", "Une valeur parmi BARBIER, COIFFURE_FEMME, LABORATOIRE, AGENCE, ADMINISTRATION, AUTRE, ou chaîne vide si inconnue"),
+                    "prestation", Map.of("type", "STRING", "description", "Prestation demandée en français (ex. Coupe homme, Barbe, Prise de sang), ou chaîne vide"),
+                    "quartier", Map.of("type", "STRING", "description", "Quartier ou ville mentionné (ex. Ariana, Ennasr), ou chaîne vide"),
+                    "avantHeure", Map.of("type", "INTEGER", "description", "Heure limite sur 24 h (18 pour « avant 18 h »), ou 0"),
+                    "attenteMax", Map.of("type", "INTEGER", "description", "Attente maximale en minutes, ou 0"),
+                    "petitPrix", Map.of("type", "BOOLEAN", "description", "true si le client veut payer peu cher")),
+            "required", List.of("categorie", "prestation", "quartier", "avantHeure", "attenteMax", "petitPrix"));
+
+    private Criteres extraireAvecGemini(String message) {
+        JsonNode x = gemini.json(CONSIGNE_EXTRACTION, message, SCHEMA_GEMINI);
+        return depuisExtraits(new CriteresExtraits(x.path("categorie").asString(""), x.path("prestation").asString(""),
+                x.path("quartier").asString(""), x.path("avantHeure").asInt(0), x.path("attenteMax").asInt(0),
+                x.path("petitPrix").asBoolean(false)), message);
+    }
+
     // ------------------------------------------------------------------ API Claude
 
     private Criteres extraireAvecIA(String message) {
         StructuredMessageCreateParams<CriteresExtraits> params = MessageCreateParams.builder()
                 .model(modele)
                 .maxTokens(2000L)
-                .system("Tu analyses la demande d'un client de Dourek, une plateforme tunisienne de files d'attente "
-                        + "virtuelles (barbiers, coiffure, laboratoires, agences, administrations). "
-                        + "Extrais uniquement les critères présents dans la demande, sans rien inventer. "
-                        + "La demande peut être en français, en arabe ou en dialecte tunisien.")
+                .system(CONSIGNE_EXTRACTION)
                 .outputConfig(CriteresExtraits.class)
                 .addUserMessage(message)
                 .build();
@@ -143,6 +198,11 @@ public class AssistantService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("réponse vide"))
                 .text();
+        return depuisExtraits(x, message);
+    }
+
+    /** Convertit les critères renvoyés par le modèle (Claude ou Gemini) en critères Dourek. */
+    private static Criteres depuisExtraits(CriteresExtraits x, String message) {
         Categorie cat = null;
         try {
             if (x.categorie() != null && !x.categorie().isBlank()) cat = Categorie.valueOf(x.categorie().trim().toUpperCase(Locale.ROOT));
@@ -154,20 +214,11 @@ public class AssistantService {
     }
 
     private String expliquerAvecIA(String message, Criteres c, List<EtablissementResume> res) {
-        String donnees = res.isEmpty() ? "Aucun établissement ne correspond." : res.stream()
-                .map(e -> String.format(Locale.FRANCE, "%d. %s (%s, %s) : %.1f km, attente ~%d min, %d personnes, note %.1f, ferme à %d h, prix dès %.0f DT",
-                        res.indexOf(e) + 1, e.nom(), e.categorieLibelle(), e.quartier(), e.distanceKm(), e.attenteMinutes(),
-                        e.personnesEnAttente(), e.note(), e.heureFermeture(),
-                        e.prestations().stream().mapToDouble(PrestationDto::prix).min().orElse(0)))
-                .collect(Collectors.joining("\n"));
         MessageCreateParams params = MessageCreateParams.builder()
                 .model(modele)
                 .maxTokens(1000L)
-                .system("Tu es l'assistant de Dourek. Le classement ci-dessous a été calculé par Dourek "
-                        + "(distance, attente, avis) : tu ne le modifies pas, tu l'expliques. Réponds en français, "
-                        + "en deux phrases au plus, sans liste ni titre. Recommande le premier et cite au besoin "
-                        + "le deuxième comme alternative. N'invente aucune information absente des données.")
-                .addUserMessage("Demande du client : « " + message + " »\n\nClassement Dourek :\n" + donnees)
+                .system(CONSIGNE_EXPLICATION)
+                .addUserMessage(demandeEtClassement(message, res))
                 .build();
         Message m = client.messages().create(params);
         if (m.stopReason().filter(StopReason.REFUSAL::equals).isPresent()) return null;

@@ -68,7 +68,7 @@ export interface Criteres {
   avantHeure: number | null; attenteMax: number | null; petitPrix: boolean | null;
 }
 
-export interface AssistantReponse { reponse: string; criteres: Criteres; resultats: EtablissementResume[]; source: 'claude' | 'local'; }
+export interface AssistantReponse { reponse: string; criteres: Criteres; resultats: EtablissementResume[]; source: 'claude' | 'gemini' | 'local'; }
 
 export interface Inscription {
   nom: string; email: string; motDePasse: string; nomEtablissement: string; telephone: string;
