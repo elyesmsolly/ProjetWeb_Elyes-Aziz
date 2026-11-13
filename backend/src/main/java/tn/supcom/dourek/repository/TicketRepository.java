@@ -13,6 +13,8 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     Optional<Ticket> findByCode(String code);
 
+    List<Ticket> findTop20ByClientEmailOrderByCreeLeDesc(String email);
+
     List<Ticket> findByEtablissementIdAndStatutOrderByOrdreAsc(Long etablissementId, StatutTicket statut);
 
     List<Ticket> findByEtablissementIdAndStatutOrderByAppeleLeDesc(Long etablissementId, StatutTicket statut);

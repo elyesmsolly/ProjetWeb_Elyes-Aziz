@@ -1,0 +1,57 @@
+<div class="container page-enter compte">
+  <form class="card boite" (ngSubmit)="valider()" novalidate>
+    <div class="tabs" role="tablist">
+      <a role="tab" routerLink="/connexion" [queryParams]="lienAutre()" [class.on]="mode() === 'connexion'" [attr.aria-selected]="mode() === 'connexion'">Se connecter</a>
+      <a role="tab" routerLink="/inscription" [queryParams]="lienAutre()" [class.on]="mode() === 'inscription'" [attr.aria-selected]="mode() === 'inscription'">Créer un compte</a>
+    </div>
+
+    @if (mode() === 'connexion') {
+      <h1>Bon retour</h1>
+      <p class="small muted sous">Connectez-vous pour prendre un ticket et suivre votre place en direct.</p>
+    } @else {
+      <h1>Créer mon compte client</h1>
+      <p class="small muted sous">Gratuit. Votre nom et votre téléphone seront proposés à chaque ticket.</p>
+      <div class="field">
+        <label class="label" for="nom">Nom et prénom</label>
+        <input id="nom" class="input" name="nom" autocomplete="name" [ngModel]="nom()" (ngModelChange)="nom.set($event)" />
+      </div>
+    }
+
+    <div class="field">
+      <label class="label" for="email">E-mail</label>
+      <input id="email" class="input" type="email" name="email" autocomplete="username" [ngModel]="email()" (ngModelChange)="email.set($event)" placeholder="vous@exemple.tn" />
+    </div>
+
+    @if (mode() === 'inscription') {
+      <div class="field">
+        <label class="label" for="tel">Téléphone</label>
+        <input id="tel" class="input" type="tel" name="telephone" autocomplete="tel" [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" placeholder="+216 ·· ··· ···" />
+        <div class="small muted aide">Pour vous prévenir quand votre tour approche.</div>
+      </div>
+    }
+
+    <div class="field">
+      <label class="label" for="mdp">Mot de passe</label>
+      <div class="mdp">
+        <input id="mdp" class="input" [type]="voir() ? 'text' : 'password'" name="mdp"
+               [attr.autocomplete]="mode() === 'inscription' ? 'new-password' : 'current-password'"
+               [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)"
+               [placeholder]="mode() === 'inscription' ? '6 caractères minimum' : ''" />
+        <button type="button" class="oeil" (click)="voir.set(!voir())" [attr.aria-label]="voir() ? 'Masquer le mot de passe' : 'Afficher le mot de passe'">
+          <app-icon name="eye" [size]="18" />
+        </button>
+      </div>
+    </div>
+
+    @if (erreur()) { <p class="error" role="alert">{{ erreur() }}</p> }
+
+    <button class="btn lg block" type="submit" [disabled]="envoi()">
+      {{ mode() === 'connexion' ? 'Se connecter' : 'Créer mon compte' }} <app-icon name="arrow" />
+    </button>
+
+    @if (mode() === 'connexion') {
+      <button type="button" class="btn ghost sm demo" (click)="remplirDemo()">Remplir avec le compte de démo</button>
+    }
+    <p class="small muted centre pro">Vous êtes un commerce ? <a class="lien" routerLink="/pro/connexion">Espace pro</a></p>
+  </form>
+</div>

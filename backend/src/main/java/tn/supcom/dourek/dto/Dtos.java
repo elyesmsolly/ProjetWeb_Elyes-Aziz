@@ -43,7 +43,7 @@ public final class Dtos {
     public record PriseTicketRequest(
             @NotNull Long prestationId,
             Map<String, Object> reponses,
-            boolean prioritaire) {}
+            Boolean prioritaire) {}
 
     public record TicketCree(String code, String numero) {}
 
@@ -84,7 +84,13 @@ public final class Dtos {
     public record LoginRequest(@NotBlank String email, @NotBlank String motDePasse) {}
 
     public record AuthReponse(String token, String nom, String role, Long etablissementId,
-                              String etablissementNom, String slug, String poste) {}
+                              String etablissementNom, String slug, String poste, String email, String telephone) {}
+
+    public record InscriptionClientRequest(
+            @NotBlank String nom,
+            @NotBlank @Email String email,
+            @NotBlank String telephone,
+            @NotBlank @Size(min = 6) String motDePasse) {}
 
     public record InscriptionRequest(
             @NotBlank String nom,
@@ -93,6 +99,7 @@ public final class Dtos {
             @NotBlank String nomEtablissement,
             String telephone,
             @NotBlank String categorie,
+            String categorieLibre,
             @NotBlank String adresse,
             String quartier,
             double latitude,

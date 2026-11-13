@@ -61,6 +61,12 @@ public class AuthService {
         e.setNom(req.nomEtablissement().trim());
         e.setSlug(slugUnique(req.nomEtablissement()));
         e.setCategorie(cat);
+        if (cat == Categorie.AUTRE) {
+            if (req.categorieLibre() == null || req.categorieLibre().isBlank())
+                throw Introuvable.requete("Précisez votre type d'activité");
+            String libre = req.categorieLibre().trim();
+            e.setCategorieLibre(Character.toUpperCase(libre.charAt(0)) + libre.substring(1));
+        }
         e.setTelephone(req.telephone());
         e.setAdresse(req.adresse());
         e.setQuartier(req.quartier() == null || req.quartier().isBlank() ? "Ariana" : req.quartier());
@@ -81,6 +87,17 @@ public class AuthService {
         return reponse(gerant);
     }
 
+    /** Création d'un compte client : il pourra prendre des tickets et suivre sa place. */
+    @Transactional
+    public AuthReponse inscriptionClient(InscriptionClientRequest req) {
+        if (utilisateurs.existsByEmailIgnoreCase(req.email()))
+            throw Introuvable.conflit("Un compte existe déjà avec cet e-mail");
+        Utilisateur client = new Utilisateur(req.email().trim().toLowerCase(Locale.ROOT),
+                encodeur.encode(req.motDePasse()), req.nom().trim(), Role.CLIENT, null, null);
+        client.setTelephone(req.telephone().trim());
+        return reponse(utilisateurs.save(client));
+    }
+
     private AuthReponse reponse(Utilisateur u) {
         Instant maintenant = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -89,13 +106,14 @@ public class AuthService {
                 .issuedAt(maintenant)
                 .expiresAt(maintenant.plus(Duration.ofHours(12)))
                 .claim("role", u.getRole().name())
-                .claim("etab", u.getEtablissement().getId())
+                .claim("etab", u.getEtablissement() == null ? 0L : u.getEtablissement().getId())
                 .claim("poste", u.getPoste() == null ? "" : u.getPoste())
                 .claim("nom", u.getNom())
                 .build();
         String token = jwt.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         Etablissement e = u.getEtablissement();
-        return new AuthReponse(token, u.getNom(), u.getRole().name(), e.getId(), e.getNom(), e.getSlug(), u.getPoste());
+        return new AuthReponse(token, u.getNom(), u.getRole().name(), e == null ? null : e.getId(),
+                e == null ? null : e.getNom(), e == null ? null : e.getSlug(), u.getPoste(), u.getEmail(), u.getTelephone());
     }
 
     private String slugUnique(String nom) {

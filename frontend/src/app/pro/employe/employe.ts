@@ -58,7 +58,7 @@ export class Employe {
     this.destroy.onDestroy(() => clearInterval(minuteur));
     const s = this.auth.session();
     if (!s) return;
-    inject(TempsReelService).file(s.etablissementId)
+    inject(TempsReelService).file(s.etablissementId!)
       .pipe(switchMap(() => this.api.etatFile()), takeUntilDestroyed())
       .subscribe({
         next: (e) => { this.etat.set(e); if (this.prestationSurPlace() === null) this.prestationSurPlace.set(e.prestations[0]?.id ?? null); },

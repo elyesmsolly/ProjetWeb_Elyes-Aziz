@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Subscription, switchMap } from 'rxjs';
+import { AuthService } from '../../core/auth.service';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { DernierTicket } from '../../core/dernier-ticket';
 import { distance, heure, icone, note, prix } from '../../core/format';
@@ -31,6 +32,7 @@ export class Etablissement {
   private dernier = inject(DernierTicket);
   private destroy = inject(DestroyRef);
   protected readonly position = inject(PositionService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly detail = signal<EtablissementDetail | null>(null);
   protected readonly erreur = signal<string | null>(null);
@@ -63,6 +65,9 @@ export class Etablissement {
         next: (d) => {
           this.detail.set(d);
           this.prestationId.set(d.resume.prestations[0]?.id ?? null);
+          // Le nom et le téléphone du compte client sont proposés d'office.
+          const s = this.auth.session();
+          if (s?.role === 'CLIENT') this.reponses.update((r) => ({ nom: s.nom, telephone: s.telephone ?? '', ...r }));
           this.ecoute = this.tempsReel.file(d.resume.id)
             .pipe(switchMap(() => this.api.etablissement(slug)), takeUntilDestroyed(this.destroy))
             .subscribe((maj) => this.detail.set(maj));

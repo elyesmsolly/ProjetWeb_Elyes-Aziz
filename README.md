@@ -28,11 +28,18 @@ Tout tourne en local, sans déploiement.
 ## 2. Fonctionnalités réalisées
 
 ### Côté client
+- **Compte client** (`/connexion`, `/inscription`) : nom, e-mail, téléphone et mot de passe.
+  - Prendre un ticket et voir « Mon ticket » demande d'être connecté en tant que client.
+  - `/ticket` ouvre le ticket en cours, sinon la liste des derniers tickets du client.
+  - Un client ne peut voir que ses propres tickets (403 sinon).
 - **Accueil** : recherche par service et lieu, catégories, établissements proches avec leur attente en direct.
 - **Recherche** (`/etablissements`) :
   - filtres par catégorie, « ouvert maintenant », attente < 20 min, < 1 km et note 4+ ;
   - tri, vue liste ou carte ;
-  - temps d'attente mis à jour en direct.
+  - temps d'attente mis à jour en direct ;
+  - la recherche libre devine la catégorie (« coiffeur » → barbiers) puis garde les établissements qui correspondent le mieux aux autres mots ;
+  - les catégories « Autres » créées par les gérants (ex. Pressing) apparaissent comme filtres.
+- **Carte** (OpenStreetMap + Leaflet, gratuit, sans clé) : bouton plein écran, touche Échap pour fermer.
 - **Assistant de recherche** : « une coupe avant 18 h près de l'Ariana, pas trop cher ».
   - L'IA extrait les critères (sortie structurée).
   - **Notre code classe** les établissements selon la distance, l'attente et l'avis.
@@ -118,10 +125,13 @@ Pour tester depuis un téléphone sur le même Wi-Fi, ouvrir `http://<IP-du-PC>:
 | Gérant (Salon Karim) | `karim@dourek.tn` | `dourek123` |
 | Employé (Poste 2, Salon Karim) | `sami@dourek.tn` | `dourek123` |
 | Gérant (Labo El Menzah) | `labo@dourek.tn` | `dourek123` |
+| Client (Yassine Trabelsi) | `client@dourek.tn` | `dourek123` |
+
+> Base PostgreSQL créée par une version précédente : la supprimer et la recréer (`DROP DATABASE dourek; CREATE DATABASE dourek;`), car un client n'a pas d'établissement (colonne désormais facultative).
 
 Scénario conseillé :
 1. Ouvrir l'écran employé avec `sami@dourek.tn`.
-2. Dans un autre onglet ou sur un téléphone, prendre un ticket chez **Salon Karim**.
+2. Dans un autre onglet ou sur un téléphone, se connecter avec `client@dourek.tn` puis prendre un ticket chez **Salon Karim**.
 3. Cliquer sur **Appeler le suivant** : le ticket du client passe à « C'est votre tour ! » sans recharger la page.
 
 ### 3.4 Variables d'environnement (facultatives)
@@ -133,6 +143,13 @@ Aucune clé n'est écrite dans le code.
 | `DOUREK_ASSISTANT_MODELE` | Modèle utilisé | `claude-opus-5-5` |
 | `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
+
+**Pourquoi l'IA « ne marche pas » ?** Sans `ANTHROPIC_API_KEY`, l'assistant tourne en **analyse locale** (mots-clés, quartier, heure, prix) et l'écran l'indique. Pour activer Claude :
+1. créer une clé sur https://console.anthropic.com (payant, crédit nécessaire) ;
+2. la mettre en variable d'environnement **dans le même terminal**, avant de lancer le back-end ;
+3. relancer `mvn spring-boot:run`.
+
+**Adresse automatique** : à l'inscription pro, un clic sur la carte remplit l'adresse et le quartier grâce à Nominatim (OpenStreetMap), appelé par le back-end (`GET /api/geo/adresse`). Gratuit, sans clé, mais il faut Internet.
 
 Exemple :
 ```bash
@@ -149,12 +166,12 @@ backend/   API Spring Boot (package tn.supcom.dourek)
   model/        entités JPA : Etablissement, Prestation, Formulaire, Ticket, Utilisateur
   repository/   accès aux données (verrou pessimiste pour la file)
   service/      FileService, FormulaireService, RechercheService, AssistantService, AuthService, TempsReel
-  web/          PublicController (/api), AuthController (/api/auth), ProController (/api/pro)
+  web/          PublicController (/api), AuthController (/api/auth), ProController (/api/pro), GeoController (/api/geo)
   config/       sécurité JWT, WebSocket, données de démo
 frontend/  application Angular
   src/app/core/     modèles, services API, authentification, temps réel
   src/app/shared/   en-tête, carte, champ dynamique, constructeur de formulaire
-  src/app/pages/    accueil, recherche, établissement, ticket
+  src/app/pages/    accueil, recherche, établissement, ticket, compte client
   src/app/pro/      connexion, inscription, tableau de bord, formulaire, écran employé
 ```
 
@@ -163,10 +180,13 @@ frontend/  application Angular
 |---|---|---|
 | GET | `/api/etablissements?q=&categorie=&lat=&lng=` | public |
 | GET | `/api/etablissements/{slug}` | public |
-| POST | `/api/etablissements/{slug}/tickets` | public |
-| GET / POST | `/api/tickets/{code}`, `/annuler`, `/laisser-passer` | public (code secret du ticket) |
+| POST | `/api/etablissements/{slug}/tickets` | client connecté |
+| GET / POST | `/api/tickets/{code}`, `/annuler`, `/laisser-passer` | client propriétaire du ticket |
+| GET | `/api/client/tickets` | client connecté |
+| GET | `/api/categories` | public |
+| GET | `/api/geo/adresse?lat=&lng=` | public (adresse via OpenStreetMap) |
 | POST | `/api/assistant` | public |
-| POST | `/api/auth/connexion`, `/api/auth/inscription` | public |
+| POST | `/api/auth/connexion`, `/api/auth/inscription`, `/api/auth/inscription-client` | public |
 | GET / POST | `/api/pro/file`, `/api/pro/file/appeler-suivant`, `/servi`, `/absent`, `/sur-place` | gérant ou employé |
 | GET / POST | `/api/pro/gerant/statistiques`, `/gerant/formulaire`, `/gerant/file/ouverture` | gérant |
 | WS | `/ws` (STOMP), sujet `/topic/etablissements/{id}` | public |

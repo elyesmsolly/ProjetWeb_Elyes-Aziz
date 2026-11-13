@@ -1,0 +1,16 @@
+.compte { display: grid; place-items: center; padding: 48px 0 72px; min-height: calc(100vh - 72px - 200px); }
+.boite { width: min(440px, 100%); padding: 32px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font-size: 28px; }
+.sous { margin: -6px 0 6px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface-2); border-radius: var(--radius); padding: 4px; margin-bottom: 12px; }
+.tabs > a { height: 40px; display: grid; place-items: center; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--muted); transition: color var(--t-fast) ease; }
+.tabs > a.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.mdp { position: relative; }
+.mdp .input { padding-right: 48px; }
+.oeil { position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); border-radius: 8px; }
+.aide { margin-top: 6px; }
+.demo { align-self: center; }
+.centre { text-align: center; }
+.lien { color: var(--primary); font-weight: 600; }
+@media (hover: hover) { .tabs > a:not(.on):hover { color: var(--text); } .lien:hover { text-decoration: underline; text-underline-offset: 3px; } }
+@media (max-width: 640px) { .boite { padding: 22px; } .compte { padding: 24px 0 48px; } }

@@ -44,3 +44,11 @@
   .actions .btn { font-size: 15px; height: 52px; }
   .queue .q:not(.me):not(.serving):nth-child(n+7) { display: none; }
 }
+
+.historique { margin: 24px auto 0; max-width: 640px; }
+.historique h2 { font-size: 18px; margin-bottom: 8px; }
+.historique ul { list-style: none; }
+.historique a { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+.historique li:last-child a { border-bottom: none; }
+.historique .num { font-family: var(--font-display); font-weight: 800; min-width: 56px; }
+.historique .grow { flex: 1; min-width: 0; }

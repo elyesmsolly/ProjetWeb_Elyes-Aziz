@@ -34,6 +34,13 @@
           <div class="row wrap" style="gap:8px" role="radiogroup" aria-label="Catégorie">
             @for (c of categories; track c.code) { <button type="button" class="chip" role="radio" [attr.aria-checked]="categorie() === c.code" [class.on]="categorie() === c.code" (click)="categorie.set(c.code)">{{ c.libelle }}</button> }
           </div>
+          @if (categorie() === 'AUTRE') {
+            <div class="autre">
+              <label class="label" for="cl">Votre type d’activité <span class="req">*</span></label>
+              <input id="cl" class="input" maxlength="40" [ngModel]="categorieLibre()" (ngModelChange)="categorieLibre.set($event)" placeholder="Ex. Pressing, Vétérinaire, Garage" />
+              <div class="small muted">Il sera ajouté aux catégories de la recherche.</div>
+            </div>
+          }
         </div>
         <div class="grid2">
           <div class="field"><label class="label" for="ad">Adresse <span class="req">*</span></label>
@@ -41,8 +48,15 @@
           <div class="field"><label class="label" for="qu">Quartier</label><input id="qu" class="input" [ngModel]="quartier()" (ngModelChange)="quartier.set($event)" /></div>
         </div>
         <div class="carte-zone">
-          <app-carte [reperes]="reperes()" [zoom]="14" (clic)="pos.set($event)" />
-          <span class="small aide-carte">Cliquez sur la carte pour placer votre établissement</span>
+          <app-carte [reperes]="reperes()" [zoom]="14" (clic)="placer($event)" />
+          <span class="small aide-carte" aria-live="polite">
+            @switch (etatAdresse()) {
+              @case ('recherche') { Recherche de l’adresse… }
+              @case ('ok') { Adresse remplie. Vous pouvez la corriger. }
+              @case ('erreur') { Adresse introuvable ici : saisissez-la à la main. }
+              @default { Cliquez sur la carte : l’adresse se remplit toute seule }
+            }
+          </span>
         </div>
         <span class="label">Horaires d’ouverture</span>
         <div class="col hours-list">

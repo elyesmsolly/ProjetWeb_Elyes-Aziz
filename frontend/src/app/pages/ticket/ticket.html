@@ -1,13 +1,29 @@
 <div class="container page">
-  @if (!code() && !dernier.code()) {
+  @if (erreur()) {
+    <div class="card vide"><h2>{{ erreur() }}</h2><a class="btn" routerLink="/etablissements">Prendre un nouveau ticket</a></div>
+  } @else if (!code() && historique(); as h) {
     <div class="card vide">
       <app-icon name="ticket" [size]="40" />
       <h2>Vous n’avez pas de ticket en cours</h2>
       <p class="muted">Choisissez un établissement et prenez votre ticket à distance.</p>
       <a class="btn lg" routerLink="/etablissements">Trouver un établissement</a>
     </div>
-  } @else if (erreur()) {
-    <div class="card vide"><h2>{{ erreur() }}</h2><a class="btn" routerLink="/etablissements">Prendre un nouveau ticket</a></div>
+    @if (h.length) {
+      <section class="card historique">
+        <h2>Mes derniers tickets</h2>
+        <ul>
+          @for (x of h; track x.code) {
+            <li>
+              <a [routerLink]="['/ticket', x.code]">
+                <b class="num">{{ x.numero }}</b>
+                <span class="grow">{{ x.etablissementNom }} · {{ x.prestation }}<span class="small muted"> · {{ heure(x.creeLe) }}</span></span>
+                <span class="badge">{{ libelleStatut(x.statut) }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    }
   } @else if (t(); as t) {
     <div class="layout">
       <div class="col" style="gap:20px">

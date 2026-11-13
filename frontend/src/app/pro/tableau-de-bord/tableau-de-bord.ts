@@ -39,7 +39,7 @@ export class TableauDeBord {
 
   constructor() {
     const s = this.auth.session()!;
-    inject(TempsReelService).file(s.etablissementId)
+    inject(TempsReelService).file(s.etablissementId!)
       .pipe(switchMap(() => forkJoin([this.api.statistiques(), this.api.etatFile()])), takeUntilDestroyed())
       .subscribe({
         next: ([st, et]) => { this.stats.set(st); this.etat.set(et); },

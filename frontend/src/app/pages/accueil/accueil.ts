@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, of } from 'rxjs';
+import { catchError, map, of } from 'rxjs';
 import { ApiService } from '../../core/api.service';
 import { badgeAttente, distance, icone, note } from '../../core/format';
 import { Icon } from '../../shared/icon';
@@ -20,7 +20,7 @@ export class Accueil {
 
   protected readonly service = signal('');
   protected readonly lieu = signal('Ariana, Tunis');
-  protected readonly categories = toSignal(this.api.categories().pipe(catchError(() => of([]))), { initialValue: [] });
+  protected readonly categories = toSignal(this.api.categories().pipe(map((cs) => cs.filter((c) => !c.libre)), catchError(() => of([]))), { initialValue: [] });
   protected readonly proches = toSignal(this.api.rechercher().pipe(catchError(() => of(null))), { initialValue: undefined });
 
   protected readonly fmt = { distance, note, badgeAttente, icone };

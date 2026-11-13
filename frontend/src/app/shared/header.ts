@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { DernierTicket } from '../core/dernier-ticket';
 import { Icon } from './icon';
@@ -15,15 +15,18 @@ import { Icon } from './icon';
       <nav class="nav" [class.open]="menu()" (click)="menu.set(false)">
         <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
         <a routerLink="/etablissements" routerLinkActive="on">Établissements</a>
-        <a [routerLink]="dernier.code() ? ['/ticket', dernier.code()] : ['/ticket']" routerLinkActive="on">Mon ticket</a>
+        @if (auth.client()) { <a routerLink="/ticket" routerLinkActive="on">Mon ticket</a> }
         <a routerLink="/pro" routerLinkActive="on">Espace pro</a>
         <div class="nav-actions">
           <span class="lang" title="La version arabe arrive bientôt">FR | ع</span>
-          @if (auth.connecte()) {
+          @if (auth.client()) {
+            <span class="moi"><app-icon name="user" [size]="16" />{{ auth.session()?.nom }}</span>
+            <button class="btn ghost sm" type="button" (click)="sortir()">Déconnexion</button>
+          } @else if (auth.pro()) {
             <a class="btn sm" [routerLink]="auth.gerant() ? '/pro/tableau-de-bord' : '/pro/employe'">{{ auth.session()?.etablissementNom }}</a>
           } @else {
-            <a class="btn ghost sm" routerLink="/pro/connexion">Se connecter</a>
-            <a class="btn sm" routerLink="/pro/inscription">Créer un compte</a>
+            <a class="btn ghost sm" routerLink="/connexion">Se connecter</a>
+            <a class="btn sm" routerLink="/inscription">Créer un compte</a>
           }
         </div>
       </nav>
@@ -38,6 +41,7 @@ import { Icon } from './icon';
   .nav { display: flex; align-items: center; gap: 24px; font-weight: 500; color: var(--muted); flex: 1; }
   .nav > a { position: relative; padding: 6px 0; transition: color var(--t-fast) ease; }
   .nav > a.on { color: var(--text); font-weight: 600; }
+  .moi { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text); font-size: 14px; }
   .nav > a.on::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; border-radius: 2px; background: var(--accent); }
   .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
   .lang { font-size: 13px; font-weight: 600; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: default; }
@@ -56,6 +60,13 @@ import { Icon } from './icon';
 })
 export class Header {
   protected readonly auth = inject(AuthService);
-  protected readonly dernier = inject(DernierTicket);
+  private readonly dernier = inject(DernierTicket);
+  private readonly router = inject(Router);
   protected readonly menu = signal(false);
+
+  sortir() {
+    this.auth.fermer();
+    this.dernier.oublier();
+    this.router.navigateByUrl('/');
+  }
 }

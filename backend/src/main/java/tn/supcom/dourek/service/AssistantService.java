@@ -99,7 +99,7 @@ public class AssistantService {
         String presta = RechercheService.normaliser(c.prestation());
         String quartier = RechercheService.normaliser(c.quartier());
         int maintenant = ZonedDateTime.now(FileService.TUNIS).getHour() * 60 + ZonedDateTime.now(FileService.TUNIS).getMinute();
-        return tous.stream()
+        List<EtablissementResume> classes = tous.stream()
                 .filter(EtablissementResume::fileOuverte)
                 .filter(e -> presta.isBlank() || e.prestations().stream()
                         .anyMatch(p -> RechercheService.normaliser(p.nom()).contains(presta)
@@ -107,8 +107,14 @@ public class AssistantService {
                 .filter(e -> c.attenteMax() == null || e.attenteMinutes() <= c.attenteMax())
                 .filter(e -> c.avantHeure() == null || maintenant + e.attenteMinutes() <= c.avantHeure() * 60)
                 .sorted((a, b) -> Double.compare(ajuste(a, quartier, c), ajuste(b, quartier, c)))
-                .limit(3)
                 .toList();
+        // Quartier demandé (« à Ennasr ») : s'il y a des établissements sur place, on ne garde qu'eux.
+        if (!quartier.isBlank()) {
+            List<EtablissementResume> surPlace = classes.stream()
+                    .filter(e -> RechercheService.normaliser(e.quartier() + " " + e.adresse() + " " + e.nom()).contains(quartier)).toList();
+            if (!surPlace.isEmpty()) classes = surPlace;
+        }
+        return classes.stream().limit(3).toList();
     }
 
     /** Petits bonus quand le quartier demandé ou le petit prix correspondent. */
