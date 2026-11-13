@@ -118,4 +118,13 @@ public final class Dtos {
 
     public record AssistantReponse(String reponse, Criteres criteres, List<EtablissementResume> resultats,
                                    String source) {}
+
+    // ---- formulaire proposé par l'IA
+
+    public record GenerationFormulaireRequest(@NotBlank @Size(min = 3, max = 600) String description,
+                                              @Size(max = 80) String etablissement,
+                                              @Size(max = 60) String activite) {}
+
+    /** source : « claude », « gemini » ou « local » (règles par mots-clés, sans IA). */
+    public record GenerationFormulaireReponse(List<ChampFormulaire> champs, String source) {}
 }

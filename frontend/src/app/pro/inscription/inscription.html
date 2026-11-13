@@ -91,8 +91,8 @@
       }
       @case (3) {
         <h2>Formulaire client</h2>
-        <div class="small muted sous">Ce que vos clients remplissent avant de prendre un ticket. Glissez les champs dont vous avez besoin.</div>
-        <app-constructeur [(champs)]="champs" [nomEtablissement]="nomEtab()" />
+        <div class="small muted sous">Ce que vos clients remplissent avant de prendre un ticket. Décrivez-le à l’IA ou glissez les champs dont vous avez besoin.</div>
+        <app-constructeur [(champs)]="champs" [nomEtablissement]="nomEtab()" [activite]="libelleCategorie()" />
       }
       @case (4) {
         <div class="fin">

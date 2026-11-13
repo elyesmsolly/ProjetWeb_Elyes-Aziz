@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import tn.supcom.dourek.dto.Dtos.*;
 import tn.supcom.dourek.model.Categorie;
 import tn.supcom.dourek.service.AssistantService;
+import tn.supcom.dourek.service.FormulaireIaService;
 import tn.supcom.dourek.service.FileService;
 import tn.supcom.dourek.service.RechercheService;
 
@@ -22,11 +23,14 @@ public class PublicController {
     private final RechercheService recherche;
     private final FileService file;
     private final AssistantService assistant;
+    private final FormulaireIaService formulaireIa;
 
-    public PublicController(RechercheService recherche, FileService file, AssistantService assistant) {
+    public PublicController(RechercheService recherche, FileService file, AssistantService assistant,
+                            FormulaireIaService formulaireIa) {
         this.recherche = recherche;
         this.file = file;
         this.assistant = assistant;
+        this.formulaireIa = formulaireIa;
     }
 
     @GetMapping("/categories")
@@ -90,6 +94,15 @@ public class PublicController {
     @PostMapping("/assistant")
     public AssistantReponse assistant(@Valid @RequestBody AssistantRequest req) {
         return assistant.repondre(req);
+    }
+
+    /**
+     * Propose un formulaire client à partir d'une phrase du gérant. Route publique : elle sert aussi pendant
+     * l'inscription, avant que le compte existe. Elle ne modifie rien : le gérant publie lui-même le formulaire.
+     */
+    @PostMapping("/assistant/formulaire")
+    public GenerationFormulaireReponse formulaire(@Valid @RequestBody GenerationFormulaireRequest req) {
+        return formulaireIa.generer(req);
     }
 
     @GetMapping("/assistant/statut")

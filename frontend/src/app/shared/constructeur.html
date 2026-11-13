@@ -1,3 +1,33 @@
+<section class="card ia" aria-labelledby="ia-titre">
+  <div class="bot" aria-hidden="true"><app-icon name="spark" /></div>
+  <div class="ia-corps">
+    <h3 id="ia-titre">Créer le formulaire avec l’IA</h3>
+    <p class="small muted">Décrivez votre activité et ce que vous voulez savoir de vos clients. L’IA propose les champs, puis vous les modifiez comme vous voulez.</p>
+    <form class="ia-saisie" (ngSubmit)="proposer()">
+      <textarea class="input" name="description" rows="2" maxlength="600" [ngModel]="description()" (ngModelChange)="description.set($event)"
+        placeholder="Ex. « Laboratoire d’analyses : date de naissance, à jeun ou non, type d’ordonnance »" aria-label="Description de votre activité et des informations à demander"></textarea>
+      <button class="btn" type="submit" [disabled]="generation() || description().trim().length < 3">
+        @if (generation()) { <span class="spinner"></span>Création… } @else { <app-icon name="spark" [size]="16" />Proposer un formulaire }
+      </button>
+    </form>
+    @if (erreurIa()) {
+      <p class="error" role="alert">{{ erreurIa() }}</p>
+    } @else if (proposition(); as p) {
+      <div class="row wrap ia-resultat" role="status">
+        <span class="small"><b>{{ p.ajoutes }} champ{{ p.ajoutes > 1 ? 's' : '' }} proposé{{ p.ajoutes > 1 ? 's' : '' }}</b> en plus du nom et du téléphone. Vérifiez-les ci-dessous avant de continuer.
+          @if (p.source === 'local') { <span class="muted">(proposition par mots-clés : aucune IA n’est configurée sur ce serveur)</span> }
+        </span>
+        <button type="button" class="chip" (click)="annulerProposition()">Annuler et reprendre mon formulaire</button>
+      </div>
+    } @else {
+      <div class="row wrap exemples">
+        <span class="small muted">Exemples :</span>
+        @for (ex of exemplesIa; track ex) { <button type="button" class="chip" (click)="description.set(ex)">{{ ex }}</button> }
+      </div>
+    }
+  </div>
+</section>
+
 <div class="builder" cdkDropListGroup>
   <div class="card palette">
     <div class="titre-col">Ajouter un champ</div>

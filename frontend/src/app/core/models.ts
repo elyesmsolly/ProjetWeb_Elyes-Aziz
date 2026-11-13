@@ -70,6 +70,9 @@ export interface Criteres {
 
 export interface AssistantReponse { reponse: string; criteres: Criteres; resultats: EtablissementResume[]; source: 'claude' | 'gemini' | 'local'; }
 
+/** Formulaire proposé par l'IA à partir d'une phrase du gérant (source « local » : règles simples, sans IA). */
+export interface FormulairePropose { champs: ChampFormulaire[]; source: 'claude' | 'gemini' | 'local'; }
+
 export interface Inscription {
   nom: string; email: string; motDePasse: string; nomEtablissement: string; telephone: string;
   categorie: string; categorieLibre: string | null; adresse: string; quartier: string; latitude: number; longitude: number;
