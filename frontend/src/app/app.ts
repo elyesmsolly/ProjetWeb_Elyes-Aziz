@@ -1,12 +1,17 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastService } from './core/toast.service';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.css',
-  templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RouterOutlet],
+  template: `
+    <router-outlet />
+    @if (toast.message(); as m) {
+      <div class="toast" [class.error]="m.erreur" role="status" aria-live="polite">{{ m.texte }}</div>
+    }`,
 })
 export class App {
-  protected readonly title = signal('frontend');
+  protected readonly toast = inject(ToastService);
 }
