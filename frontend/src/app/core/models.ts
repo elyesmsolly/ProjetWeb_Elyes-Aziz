@@ -63,12 +63,14 @@ export interface Session {
   etablissementNom: string | null; slug: string | null; poste: string | null; email: string; telephone: string | null;
 }
 
+/** Ce que l'assistant a compris de la demande (null : non précisé). */
 export interface Criteres {
-  categorie: string | null; prestation: string | null; quartier: string | null;
-  avantHeure: number | null; attenteMax: number | null; petitPrix: boolean | null;
+  besoin: string | null; prestation: string | null; quartier: string | null;
+  avantHeure: number | null; attenteMax: number | null; distanceMaxKm: number | null; petitPrix: boolean | null;
+  priorite: 'ATTENTE' | 'DISTANCE' | 'NOTE' | 'PRIX' | null;
 }
 
-export interface AssistantReponse { reponse: string; criteres: Criteres; resultats: EtablissementResume[]; source: 'claude' | 'gemini' | 'local'; }
+export interface AssistantReponse { reponse: string; criteres: Criteres | null; resultats: EtablissementResume[]; source: 'claude' | 'gemini' | 'local'; }
 
 /** Formulaire proposé par l'IA à partir d'une phrase du gérant (source « local » : règles simples, sans IA). */
 export interface FormulairePropose { champs: ChampFormulaire[]; source: 'claude' | 'gemini' | 'local'; }

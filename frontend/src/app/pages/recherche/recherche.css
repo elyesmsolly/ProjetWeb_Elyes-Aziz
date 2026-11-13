@@ -11,11 +11,14 @@
 .layout { display: grid; grid-template-columns: 1fr 480px; gap: 24px; margin-top: 24px; align-items: start; }
 .liste { gap: 16px; }
 
-.ai { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; background: linear-gradient(120deg, #eaf1e0, #fff1e6); border-color: #d7e2cc; }
-.bot { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--primary); color: #fff; }
+.ai { background: linear-gradient(120deg, #eaf1e0, #fff1e6); border-color: #d7e2cc; }
 .ask { display: flex; gap: 8px; margin-bottom: 12px; }
+.ask .champ { flex: 1; min-width: 0; }
 .ask .input { background: var(--surface); }
-.ask .btn { height: 44px; width: 48px; padding: 0; }
+.ask .btn { padding: 0 16px; }
+.compris { gap: 6px; margin-top: 10px; align-items: center; }
+.compris .badge { background: var(--surface); border: 1px solid #d7e2cc; }
+.res .badge.primary app-icon { margin-right: -1px; }
 .reponse { font-size: 14px; animation: page-in 320ms var(--ease-out) both; }
 .propositions { gap: 8px; margin-top: 10px; }
 .note { margin-top: 8px; }
@@ -53,6 +56,7 @@
 @media (max-width: 640px) {
   .res { grid-template-columns: 1fr auto; }
   .res .thumb { display: none; }
-  .ai { grid-template-columns: 1fr; }
-  .bot { display: none; }
+  .ask { flex-wrap: wrap; }
+  .ask .champ { flex-basis: 100%; }
+  .ask .btn { flex: 1; }
 }

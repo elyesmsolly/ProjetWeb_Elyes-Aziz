@@ -14,17 +14,21 @@
           <app-icon name="pin" />
           <input class="input lg" name="lieu" [ngModel]="lieu()" (ngModelChange)="lieu.set($event)" />
         </label>
-        <button class="btn lg" type="submit">Rechercher</button>
+        <div class="actions">
+          <button class="btn lg ghost" type="submit">Rechercher</button>
+          <button class="btn lg" type="button" (click)="demanderAssistant()"><app-icon name="spark" [size]="18" />Avec l’IA</button>
+        </div>
       </form>
       <div class="row wrap assist">
-        <span class="small muted">Ou demandez à l’assistant :</span>
-        <button class="chip" type="button" (click)="demanderAssistant()"><app-icon name="spark" [size]="14" />« {{ exemple }} »</button>
+        <span class="small muted">Avec l’IA, écrivez une phrase :</span>
+        <button class="chip" type="button" (click)="demanderAssistant(exemple)"><app-icon name="spark" [size]="14" />« {{ exemple }} »</button>
       </div>
     </div>
 
     <div class="mock" aria-hidden="true">
       <div class="phonecard led">
-        <div class="small muted">Votre ticket chez Salon Karim</div>
+        <span class="badge exemple">Exemple de ticket</span>
+        <div class="small muted">Chez Salon Karim</div>
         <div class="led-num bignum">B‑24</div>
         <span class="badge ok"><span class="dot live"></span>3 personnes avant vous</span>
         <div class="progress"><span style="width:70%"></span></div>
@@ -56,7 +60,7 @@
       <div class="near">
         @for (e of (proches() ?? []).slice(0, 3); track e.id; let i = $index) {
           <a class="card" [routerLink]="['/etablissements', e.slug]">
-            <div class="thumb" [class.v2]="i === 1" [class.v3]="i === 2" style="height:140px;margin-bottom:14px"><app-icon [name]="fmt.icone(e.categorie)" [size]="44" /></div>
+            <div class="thumb" [class.v2]="i === 1" [class.v3]="i === 2" style="height:140px;margin-bottom:14px"><app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="44" /></div>
             <div class="row between"><h3>{{ e.nom }}</h3><span class="badge" [class]="fmt.badgeAttente(e.attenteMinutes)">~{{ e.attenteMinutes }} min</span></div>
             <div class="small muted meta">{{ e.categorieLibelle }} · {{ fmt.distance(e.distanceKm) }} · ★ {{ fmt.note(e.note) }}</div>
             <span class="btn block">Rejoindre la file</span>
