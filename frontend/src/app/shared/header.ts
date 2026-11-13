@@ -11,7 +11,7 @@ import { Icon } from './icon';
   template: `
   <header class="header">
     <div class="container bar">
-      <a class="logo" routerLink="/" aria-label="Dourek, accueil"><span class="logo-mark">D</span>Dourek</a>
+      <a class="logo" routerLink="/" title="Accueil"><span class="logo-mark" aria-hidden="true">D</span>Dourek</a>
       <nav class="nav" [class.open]="menu()" (click)="menu.set(false)">
         <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
         <a routerLink="/etablissements" routerLinkActive="on">Établissements</a>

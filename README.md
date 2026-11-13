@@ -173,7 +173,39 @@ frontend/  application Angular
 
 ---
 
-## 5. Branches
+## 5. Tests et qualité
+
+### Parcours testés (Playwright, Chrome)
+| Scénario | Résultat |
+|---|---|
+| Un client prend un ticket chez Salon Karim, l'employé clique 6 fois sur « Appeler le suivant » | La page du client passe à « C'est votre tour ! » sans rechargement (WebSocket) |
+| Le gérant glisse un champ « Date » dans le formulaire, le réordonne, publie la version 4 | Le formulaire du client affiche la v4 avec le nouveau champ |
+| Champ obligatoire vide à la prise de ticket | Refus 400 avec un message clair |
+| Employé qui appelle une route réservée au gérant | Refus 403 |
+| Assistant : « une barbe pas loin, le plus vite possible » | Classement et explication (mode local sans clé) |
+| Toutes les pages à 390 px (mobile) et 1440 px (bureau) | Aucun débordement horizontal |
+
+### Audit Lighthouse (build de production, profil mobile)
+| Page | Performance | Accessibilité | Bonnes pratiques | SEO |
+|---|---|---|---|---|
+| Accueil | 94 | 100 | 100 | 100 |
+| Recherche | 88 | 100 | 96\* | 100 |
+| Établissement | 87 | 100 | 96\* | 100 |
+| Connexion pro | 95 | 100 | 100 | 100 |
+| Inscription pro | 91 | 100 | 100 | 100 |
+
+\* Seul point restant : les tuiles de la carte OpenStreetMap n'étaient pas joignables depuis l'environnement de test.
+
+Mesures appliquées :
+- **Performance :** pages chargées à la demande (lazy loading), 93 Ko compressés au premier chargement, polices hébergées localement en woff2, aucune image lourde (icônes SVG).
+- **Accessibilité :** balises sémantiques (`header`, `nav`, `main`, `footer`), contrastes vérifiés, libellés sur tous les champs, `aria-live` sur le ticket, navigation au clavier, `prefers-reduced-motion` respecté.
+
+### Navigateurs
+Testé sur Chrome (Chromium). À vérifier avant le rendu : Firefox, Edge et Safari (sur Mac). Le site n'utilise que des API standard (WebSocket, Fetch, CSS Grid), prises en charge par ces quatre navigateurs.
+
+---
+
+## 6. Branches
 
 Chaque fonctionnalité a été développée sur sa propre branche, puis fusionnée dans `main` :
 
@@ -186,3 +218,4 @@ Chaque fonctionnalité a été développée sur sa propre branche, puis fusionn�
 | `feature/espace-pro-employe` | Connexion, tableau de bord, écran employé |
 | `feature/constructeur-formulaire` | Formulaire en glisser-déposer, inscription du gérant en 5 étapes |
 | `docs/readme` | Ce README |
+| `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
