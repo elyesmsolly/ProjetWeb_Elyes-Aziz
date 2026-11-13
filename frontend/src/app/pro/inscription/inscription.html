@@ -1,0 +1,119 @@
+<div class="top">
+  <a class="logo" routerLink="/"><span class="logo-mark">D</span>Dourek <span class="badge primary">Pro</span></a>
+  <ol class="stepper" aria-label="Étapes">
+    @for (e of etapes; track e; let i = $index) {
+      @if (i > 0) { <span class="trait" [class.fait]="i <= etape()"></span> }
+      <li class="st" [class.done]="i < etape()" [class.cur]="i === etape()" [attr.aria-current]="i === etape() ? 'step' : null">
+        <span class="c">@if (i < etape()) { <app-icon name="check" [size]="14" /> } @else { {{ i + 1 }} }</span><span class="lib">{{ e }}</span>
+      </li>
+    }
+  </ol>
+  <span class="small muted compteur">Étape {{ etape() + 1 }} sur 5</span>
+</div>
+
+<div class="etapes-wrap" [class.large]="etape() === 3">
+  <div class="card principal">
+    @switch (etape()) {
+      @case (0) {
+        <h2>Votre compte gérant</h2>
+        <div class="small muted sous">Vous l’utiliserez pour vous connecter à votre espace.</div>
+        <div class="field"><label class="label" for="nom">Votre nom <span class="req">*</span></label><input id="nom" class="input" [ngModel]="nom()" (ngModelChange)="nom.set($event)" autocomplete="name" /></div>
+        <div class="grid2">
+          <div class="field"><label class="label" for="em">E-mail <span class="req">*</span></label><input id="em" class="input" type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" autocomplete="email" /></div>
+          <div class="field"><label class="label" for="pw">Mot de passe <span class="req">*</span></label><input id="pw" class="input" type="password" [ngModel]="motDePasse()" (ngModelChange)="motDePasse.set($event)" autocomplete="new-password" placeholder="6 caractères minimum" /></div>
+        </div>
+      }
+      @case (1) {
+        <h2>Votre établissement</h2>
+        <div class="small muted sous">Ces informations apparaîtront dans la recherche des clients.</div>
+        <div class="grid2">
+          <div class="field"><label class="label" for="ne">Nom de l’établissement <span class="req">*</span></label><input id="ne" class="input" [ngModel]="nomEtab()" (ngModelChange)="nomEtab.set($event)" placeholder="Salon Karim" /></div>
+          <div class="field"><label class="label" for="tel">Téléphone</label><input id="tel" class="input" type="tel" [ngModel]="telephone()" (ngModelChange)="telephone.set($event)" placeholder="+216 22 345 678" /></div>
+        </div>
+        <div class="field"><span class="label">Catégorie <span class="req">*</span></span>
+          <div class="row wrap" style="gap:8px" role="radiogroup" aria-label="Catégorie">
+            @for (c of categories; track c.code) { <button type="button" class="chip" role="radio" [attr.aria-checked]="categorie() === c.code" [class.on]="categorie() === c.code" (click)="categorie.set(c.code)">{{ c.libelle }}</button> }
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label class="label" for="ad">Adresse <span class="req">*</span></label>
+            <div class="input-icon"><app-icon name="pin" /><input id="ad" class="input" [ngModel]="adresse()" (ngModelChange)="adresse.set($event)" placeholder="Rue Mustapha Mohsen, Ariana" /></div></div>
+          <div class="field"><label class="label" for="qu">Quartier</label><input id="qu" class="input" [ngModel]="quartier()" (ngModelChange)="quartier.set($event)" /></div>
+        </div>
+        <div class="carte-zone">
+          <app-carte [reperes]="reperes()" [zoom]="14" (clic)="pos.set($event)" />
+          <span class="small aide-carte">Cliquez sur la carte pour placer votre établissement</span>
+        </div>
+        <span class="label">Horaires d’ouverture</span>
+        <div class="col hours-list">
+          <div class="hours"><b>Lun – Sam</b>
+            <select class="input" [ngModel]="ouverture()" (ngModelChange)="ouverture.set(+$event)" aria-label="Ouverture">@for (h of heures; track h) { <option [value]="h">{{ h }}:00</option> }</select>
+            <select class="input" [ngModel]="fermeture()" (ngModelChange)="fermeture.set(+$event)" aria-label="Fermeture">@for (h of heures; track h) { <option [value]="h">{{ h }}:00</option> }</select>
+            <span class="switch sm on" aria-hidden="true"></span></div>
+          <div class="hours"><b>Dimanche</b><span class="small muted">{{ dimanche() ? 'Mêmes horaires' : 'Fermé' }}</span><span></span>
+            <button type="button" class="switch sm" [class.on]="dimanche()" role="switch" [attr.aria-checked]="dimanche()" aria-label="Ouvert le dimanche" (click)="dimanche.set(!dimanche())"></button></div>
+        </div>
+      }
+      @case (2) {
+        <h2>Services et postes</h2>
+        <div class="small muted sous">La durée de chaque prestation sert à estimer l’attente au début.</div>
+        <div class="col" style="gap:10px">
+          <div class="presta entete small muted"><span>Prestation</span><span>Durée (min)</span><span>Prix (DT)</span><span></span></div>
+          @for (p of prestations(); track $index; let i = $index) {
+            <div class="presta">
+              <input class="input" [ngModel]="p.nom" (ngModelChange)="modifierPrestation(i, { nom: $event })" placeholder="Ex. Barbe" [attr.aria-label]="'Nom de la prestation ' + (i + 1)" />
+              <input class="input" type="number" min="5" max="240" [ngModel]="p.dureeMinutes" (ngModelChange)="modifierPrestation(i, { dureeMinutes: +$event })" aria-label="Durée en minutes" />
+              <input class="input" type="number" min="0" [ngModel]="p.prix" (ngModelChange)="modifierPrestation(i, { prix: +$event })" aria-label="Prix" />
+              <button type="button" class="btn ghost sm" (click)="retirerPrestation(i)" [disabled]="prestations().length === 1" aria-label="Retirer"><app-icon name="trash" [size]="14" /></button>
+            </div>
+          }
+          <button type="button" class="btn link small" style="align-self:flex-start" (click)="ajouterPrestation()">+ Ajouter une prestation</button>
+        </div>
+        <div class="divider" style="margin:20px 0"></div>
+        <div class="row between wrap">
+          <div><b>Postes ouverts</b><div class="small muted">Nombre de clients servis en même temps.</div></div>
+          <div class="pas"><button type="button" (click)="postes.set(Math.max(1, postes() - 1))" aria-label="Moins">−</button><b>{{ postes() }}</b><button type="button" (click)="postes.set(Math.min(20, postes() + 1))" aria-label="Plus">+</button></div>
+        </div>
+      }
+      @case (3) {
+        <h2>Formulaire client</h2>
+        <div class="small muted sous">Ce que vos clients remplissent avant de prendre un ticket. Glissez les champs dont vous avez besoin.</div>
+        <app-constructeur [(champs)]="champs" [nomEtablissement]="nomEtab()" />
+      }
+      @case (4) {
+        <div class="fin">
+          <div class="ok-rond"><app-icon name="check" [size]="34" /></div>
+          <h2>Votre file est prête !</h2>
+          <p class="muted">{{ nomEtab() }} apparaît déjà dans la recherche. Les clients peuvent prendre un ticket à distance.</p>
+          <button class="btn lg" (click)="terminer()">Aller à mon tableau de bord <app-icon name="arrow" /></button>
+        </div>
+      }
+    }
+    @if (erreur()) { <p class="error" role="alert">{{ erreur() }}</p> }
+    @if (etape() < 4) {
+      <div class="row between nav">
+        @if (etape() > 0) { <button class="btn ghost" (click)="retour()"><app-icon name="back" />Retour</button> }
+        @else { <a class="btn ghost" routerLink="/pro/connexion"><app-icon name="back" />J’ai déjà un compte</a> }
+        <button class="btn lg" (click)="suivant()" [disabled]="envoi()">
+          {{ etape() === 3 ? 'Créer mon espace' : 'Continuer : ' + etapes[etape() + 1].toLowerCase() }} <app-icon name="arrow" />
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (etape() !== 3) {
+    <div class="col" style="gap:16px">
+      <div class="card">
+        <div class="titre-col">Aperçu dans la recherche</div>
+        <div class="thumb" style="height:120px;margin-bottom:12px"><app-icon [name]="icone()" [size]="40" /></div>
+        <div class="row between"><h3>{{ nomEtab() || 'Votre établissement' }}</h3><span class="badge ok">Ouvert</span></div>
+        <div class="small muted" style="margin:4px 0 12px">{{ libelleCategorie() }} · {{ quartier() || 'Ariana' }} · ferme à {{ fermeture() }} h</div>
+        <span class="btn block sm">Rejoindre la file</span>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:10px">Et ensuite ?</h3>
+        <div class="small" style="line-height:1.8">À la fin de l’étape 5, votre file est prête et vous arrivez sur <b>votre tableau de bord</b>. Vous pourrez modifier le formulaire à tout moment.</div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,78 @@
+<div class="builder" cdkDropListGroup>
+  <div class="card palette">
+    <div class="titre-col">Ajouter un champ</div>
+    <div class="col outils" cdkDropList [cdkDropListData]="outils" cdkDropListSortingDisabled [cdkDropListEnterPredicate]="jamais">
+      @for (o of outils; track o.type) {
+        <button type="button" class="tool" cdkDrag [cdkDragData]="o" (cdkDragStarted)="glisse = true" (click)="clicOutil(o.type)" [attr.aria-label]="'Ajouter un champ ' + o.libelle">
+          <app-icon [name]="o.icone" />{{ o.libelle }}
+          <div class="tool drag-preview" *cdkDragPreview><app-icon [name]="o.icone" />{{ o.libelle }}</div>
+          <div class="tool ghost-tool" *cdkDragPlaceholder><app-icon [name]="o.icone" />{{ o.libelle }}</div>
+        </button>
+      }
+    </div>
+    <div class="small muted astuce">Glissez un champ vers le formulaire, ou cliquez pour l’ajouter à la fin.</div>
+  </div>
+
+  <div class="col zone">
+    <div class="col liste" cdkDropList [cdkDropListData]="champs()" (cdkDropListDropped)="deposer($event)">
+      @for (c of champs(); track c.cle; let i = $index) {
+        <div class="fld" cdkDrag [class.sel]="selection() === c.cle" (click)="selection.set(c.cle)" (keydown.enter)="selection.set(c.cle)" tabindex="0"
+             [attr.aria-label]="c.label + ', ' + outil(c.type).libelle">
+          <span class="poignee" cdkDragHandle aria-label="Déplacer"><app-icon name="grip" /></span>
+          <div class="corps">
+            @if (selection() === c.cle) {
+              <input class="input titre-champ" [ngModel]="c.label" (ngModelChange)="modifier(c.cle, { label: $event })" aria-label="Intitulé du champ" maxlength="80" (click)="$event.stopPropagation()" />
+              <div class="small muted">{{ outil(c.type).libelle }}@if (c.cle === 'telephone') { · sert aux alertes }</div>
+              @if (c.type === 'LISTE' || c.type === 'CHOIX') {
+                <div class="col options">
+                  @for (o of c.options; track $index; let k = $index) {
+                    <div class="option">
+                      <input class="input" [ngModel]="o" (ngModelChange)="modifierOption(c, k, $event)" [attr.aria-label]="'Option ' + (k + 1)" maxlength="60" />
+                      <button type="button" class="icone-btn" (click)="retirerOption(c, k)" [disabled]="c.options.length <= 1" aria-label="Retirer l’option"><app-icon name="x" [size]="14" /></button>
+                    </div>
+                  }
+                  <button type="button" class="btn link small" (click)="ajouterOption(c)">+ Ajouter une option</button>
+                </div>
+              }
+              @if (c.type !== 'CASE' && c.type !== 'CHOIX') {
+                <input class="input aide" [ngModel]="c.aide ?? ''" (ngModelChange)="modifier(c.cle, { aide: $event || null })" placeholder="Texte d’aide (facultatif)" aria-label="Texte d’aide" maxlength="120" />
+              }
+            } @else {
+              <b>{{ c.label }}</b>
+              <div class="small muted">{{ outil(c.type).libelle }}@if (c.cle === 'telephone') { · sert aux alertes }@if (c.options.length) { · {{ c.options.join(', ') }} }</div>
+            }
+          </div>
+          <div class="acts" (click)="$event.stopPropagation()">
+            <button type="button" class="req-toggle" role="switch" [attr.aria-checked]="c.obligatoire" (click)="modifier(c.cle, { obligatoire: !c.obligatoire })" [disabled]="verrouille(c)">
+              Obligatoire <span class="switch sm" [class.on]="c.obligatoire"></span>
+            </button>
+            @if (selection() === c.cle) {
+              <div class="row outils-champ">
+                <button type="button" class="icone-btn" (click)="deplacer(i, -1)" [disabled]="i === 0" aria-label="Monter"><app-icon name="arrow" [size]="16" style="transform:rotate(-90deg)" /></button>
+                <button type="button" class="icone-btn" (click)="deplacer(i, 1)" [disabled]="i === champs().length - 1" aria-label="Descendre"><app-icon name="arrow" [size]="16" style="transform:rotate(90deg)" /></button>
+                <button type="button" class="icone-btn" (click)="dupliquer(c)" aria-label="Dupliquer"><app-icon name="copy" [size]="16" /></button>
+                <button type="button" class="icone-btn danger" (click)="supprimer(c)" [disabled]="verrouille(c)" [attr.aria-label]="verrouille(c) ? 'Champ indispensable' : 'Supprimer'"><app-icon name="trash" [size]="16" /></button>
+              </div>
+            }
+          </div>
+          <div class="fld placeholder" *cdkDragPlaceholder></div>
+        </div>
+      }
+      <div class="drop">Déposez un champ ici</div>
+    </div>
+    <p class="sr-only" aria-live="polite">{{ annonce() }}</p>
+  </div>
+
+  <div class="col apercu-col">
+    <div class="mini">
+      <div class="bar"><i></i><i></i><i></i><span class="url">{{ adresse() }}</span></div>
+      <div class="row between entete"><b>{{ nomEtablissement() }} · Vos informations</b><span class="badge primary">Aperçu</span></div>
+      <div class="in">
+        @for (c of champs(); track c.cle) {
+          <app-champ [champ]="c" [valeur]="reponsesApercu()[c.cle]" (valeurChange)="repondreApercu(c.cle, $event)" />
+        }
+        <button type="button" class="btn block" tabindex="-1">Prendre mon ticket</button>
+      </div>
+    </div>
+  </div>
+</div>

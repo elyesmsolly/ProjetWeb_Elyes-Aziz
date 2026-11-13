@@ -16,6 +16,7 @@ export const routes: Routes = [
       { path: 'pro/connexion', title: 'Espace pro · Dourek', loadComponent: () => import('./pro/connexion/connexion').then((m) => m.Connexion) },
     ],
   },
+  { path: 'pro/inscription', title: 'Créer mon espace · Dourek', loadComponent: () => import('./pro/inscription/inscription').then((m) => m.Inscription) },
   { path: 'pro/employe', title: 'Écran employé · Dourek', canActivate: [proGuard], loadComponent: () => import('./pro/employe/employe').then((m) => m.Employe) },
   {
     path: 'pro',
@@ -24,6 +25,7 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'tableau-de-bord' },
       { path: 'tableau-de-bord', title: 'Tableau de bord · Dourek', loadComponent: () => import('./pro/tableau-de-bord/tableau-de-bord').then((m) => m.TableauDeBord) },
+      { path: 'formulaire', title: 'Formulaire client · Dourek', loadComponent: () => import('./pro/formulaire/formulaire').then((m) => m.ConstructeurFormulaire) },
     ],
   },
   { path: '**', redirectTo: '' },
