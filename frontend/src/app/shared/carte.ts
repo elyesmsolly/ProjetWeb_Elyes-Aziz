@@ -8,10 +8,10 @@ export interface Repere { id: string | number; lat: number; lng: number; texte: 
 @Component({
   selector: 'app-carte',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.plein]': 'plein()', '(document:keydown.escape)': 'plein.set(false)' },
+  host: { '[class.plein]': 'plein()', '(document:keydown.escape)': 'basculerPlein(false)' },
   template: `
     <div #zone class="zone" role="region" aria-label="Carte des établissements"></div>
-    <button type="button" class="agrandir" (click)="plein.set(!plein())"
+    <button type="button" class="agrandir" (click)="basculerPlein(!plein())"
             [attr.aria-label]="plein() ? 'Réduire la carte' : 'Agrandir la carte'" [title]="plein() ? 'Réduire (Échap)' : 'Agrandir'">
       @if (plein()) {
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
@@ -22,8 +22,10 @@ export interface Repere { id: string | number; lat: number; lng: number; texte: 
   styles: `
     :host { display: block; position: relative; }
     .zone { position: absolute; inset: 0; border-radius: inherit; }
-    :host(.plein) { position: fixed !important; inset: 12px !important; z-index: 2000; border-radius: 16px; overflow: hidden;
-      box-shadow: 0 0 0 100vmax rgba(16, 31, 19, .55); }
+    /* Plein écran : la taille fixée par la page (ex. 300 × 160) et les styles par défaut d'un popover sont neutralisés. */
+    :host(.plein) { position: fixed !important; inset: 12px !important; width: auto !important; height: auto !important;
+      max-width: none; max-height: none; margin: 0 !important; padding: 0; border: 0; background: var(--surface);
+      z-index: 2000; border-radius: 16px; overflow: hidden; box-shadow: 0 0 0 100vmax rgba(16, 31, 19, .55); }
     .agrandir { position: absolute; top: 10px; right: 10px; z-index: 1000; width: 36px; height: 36px; display: grid; place-items: center;
       background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow);
       transition: transform var(--t-press) var(--ease-out); }
@@ -38,6 +40,7 @@ export class Carte implements AfterViewInit, OnDestroy {
   readonly clic = output<{ lat: number; lng: number }>();
 
   private injector = inject(Injector);
+  private hote = inject<ElementRef<HTMLElement>>(ElementRef);
   private zone = viewChild.required<ElementRef<HTMLDivElement>>('zone');
   private carte?: L.Map;
   private couche = L.layerGroup();
@@ -47,6 +50,21 @@ export class Carte implements AfterViewInit, OnDestroy {
 
   constructor() {
     effect(() => this.dessiner(this.reperes(), this.moi()));
+  }
+
+  /**
+   * Agrandit la carte sur toute la fenêtre, ou la remet à sa place.
+   * L'API Popover la place dans la couche supérieure du navigateur : aucun parent (carte animée, zone rognée)
+   * ne peut plus la limiter. Sur un navigateur ancien, il reste la position fixe de la classe « plein ».
+   */
+  basculerPlein(actif: boolean) {
+    if (actif === this.plein()) return;
+    const el = this.hote.nativeElement;
+    try {
+      if (actif) { el.setAttribute('popover', 'manual'); el.showPopover(); }
+      else { el.hidePopover(); el.removeAttribute('popover'); }
+    } catch { el.removeAttribute('popover'); }
+    this.plein.set(actif);
   }
 
   ngAfterViewInit() {

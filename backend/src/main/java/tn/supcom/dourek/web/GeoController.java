@@ -53,6 +53,7 @@ public class GeoController {
             HttpResponse<String> rep = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (rep.statusCode() != 200) throw new IllegalStateException("code " + rep.statusCode());
             Adresse a = lire(json.readTree(rep.body()));
+            if (cache.size() >= 500) cache.clear(); // le cache reste petit
             cache.put(cle, a);
             return a;
         } catch (InterruptedException ex) {
