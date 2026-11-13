@@ -1,0 +1,98 @@
+<div class="container page">
+  @if (!code() && !dernier.code()) {
+    <div class="card vide">
+      <app-icon name="ticket" [size]="40" />
+      <h2>Vous n’avez pas de ticket en cours</h2>
+      <p class="muted">Choisissez un établissement et prenez votre ticket à distance.</p>
+      <a class="btn lg" routerLink="/etablissements">Trouver un établissement</a>
+    </div>
+  } @else if (erreur()) {
+    <div class="card vide"><h2>{{ erreur() }}</h2><a class="btn" routerLink="/etablissements">Prendre un nouveau ticket</a></div>
+  } @else if (t(); as t) {
+    <div class="layout">
+      <div class="col" style="gap:20px">
+        @if (t.statut === 'APPELE') {
+          <div class="alert appele" role="alert"><app-icon name="bell" [size]="22" />
+            <div class="grow"><b>C’est votre tour !</b><div class="small">Présentez-vous à {{ t.poste?.split(' · ')[0] ?? 'l’accueil' }} maintenant.</div></div>
+          </div>
+        } @else if (bientot()) {
+          <div class="alert" role="status"><app-icon name="bell" [size]="22" />
+            <div class="grow"><b>Bientôt votre tour !</b><div class="small muted">Mettez-vous en route : il reste environ {{ t.attenteMinutes }} minutes.</div></div>
+            <button class="btn sm" (click)="itineraire()">Itinéraire</button>
+          </div>
+        }
+
+        <div class="card tk">
+          <div class="top led" [class.flash]="flash()">
+            <div class="muted">{{ t.etablissementNom }} · {{ t.prestation }}</div>
+            <div class="led-num num" aria-live="polite">{{ t.numero.replace('-', '‑') }}</div>
+            @switch (t.statut) {
+              @case ('EN_ATTENTE') { <span class="badge ok etat"><span class="dot live"></span>En attente · mis à jour il y a {{ majIl() }} s</span> }
+              @case ('APPELE') { <span class="badge accent etat">Appelé · {{ t.poste }}</span> }
+              @default { <span class="badge etat">{{ libelleStatut(t.statut) }}</span> }
+            }
+          </div>
+          @if (t.statut === 'EN_ATTENTE') {
+            <div class="stats">
+              <div><div class="v">{{ t.personnesAvant }}</div><div class="small muted">personne{{ t.personnesAvant > 1 ? 's' : '' }} avant vous</div></div>
+              <div><div class="v">~{{ t.attenteMinutes }} min</div><div class="small muted">attente restante</div></div>
+              <div><div class="v">{{ heure(t.passageEstime) }}</div><div class="small muted">passage estimé</div></div>
+            </div>
+            <div class="cut"></div>
+            <div class="small muted centre">Position dans la file</div>
+            <div class="queue">
+              @for (p of t.file; track p.numero; let i = $index) {
+                @if (i > 0 && t.file[i - 1].etat === 'SERVI_EN_COURS' && p.etat !== 'SERVI_EN_COURS') { <span class="muted">›</span> }
+                <div class="q" [class.serving]="p.etat === 'SERVI_EN_COURS'" [class.me]="p.etat === 'MOI'">{{ p.numero }}</div>
+              }
+            </div>
+          } @else {
+            <div class="fin small muted">
+              @switch (t.statut) {
+                @case ('APPELE') { Appelé à {{ heure(t.appeleLe) }}. Présentez votre numéro au poste. }
+                @case ('SERVI') { Servi à {{ heure(t.termineLe) }}. Merci d’avoir utilisé Dourek ! }
+                @case ('ABSENT') { Vous n’étiez pas là quand votre numéro a été appelé. Vous pouvez reprendre un ticket. }
+                @case ('ANNULE') { Ticket annulé. }
+              }
+              @if (t.statut !== 'APPELE') { <a class="btn sm" [routerLink]="['/etablissements', t.etablissementSlug]">Reprendre un ticket</a> }
+            </div>
+          }
+        </div>
+
+        @if (t.statut === 'EN_ATTENTE') {
+          <div class="row actions">
+            <button class="btn ghost lg grow" (click)="laisserPasser()"><app-icon name="skip" />Laisser passer 1 personne</button>
+            <button class="btn danger lg grow" (click)="annuler()" (blur)="confirmerAnnulation.set(false)">
+              <app-icon name="x" />{{ confirmerAnnulation() ? 'Confirmer l’annulation' : 'Annuler mon ticket' }}
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="col" style="gap:20px">
+        <div class="card">
+          <h3 style="margin-bottom:16px">Suivi</h3>
+          <ol class="tl">
+            <li class="done"><b>Ticket pris</b><div class="small muted">{{ heure(t.creeLe) }} · formulaire v{{ t.formulaireVersion }} envoyé</div></li>
+            <li [class.done]="etapes().appele" [class.cur]="t.statut === 'EN_ATTENTE'"><b>En attente</b><div class="small muted">{{ t.statut === 'EN_ATTENTE' ? t.personnesAvant + (t.personnesAvant > 1 ? ' personnes' : ' personne') + ' avant vous' : 'Terminé' }}</div></li>
+            <li [class.done]="etapes().servi" [class.cur]="t.statut === 'APPELE'"><b>Appelé</b><div class="small muted">{{ t.appeleLe ? heure(t.appeleLe) + ' · ' + (t.poste ?? '') : 'Présentez-vous au poste indiqué' }}</div></li>
+            <li [class.done]="etapes().servi" class="last"><b>Servi</b><div class="small muted">{{ t.statut === 'SERVI' ? heure(t.termineLe) : 'Donnez votre avis' }}</div></li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px">Notifications</h3>
+          <button class="row between pref" (click)="alerte15.set(!alerte15())" role="switch" [attr.aria-checked]="alerte15()"><span class="small">Me prévenir 15 min avant</span><span class="switch" [class.on]="alerte15()"></span></button>
+          <button class="row between pref" (click)="son.set(!son())" role="switch" [attr.aria-checked]="son()"><span class="small">Son et vibration</span><span class="switch" [class.on]="son()"></span></button>
+          <div class="small muted connexion"><span class="dot" [class.live]="enDirect()" [style.color]="enDirect() ? 'var(--ok)' : 'var(--warn)'"></span>{{ enDirect() ? 'Connecté en temps réel' : 'Reconnexion…' }}</div>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:12px">{{ t.etablissementNom }}</h3>
+          <app-carte class="carte" [reperes]="reperes()" [moi]="position.actuelle()" [zoom]="15" />
+          <div class="small muted">{{ t.adresse }}</div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="layout"><div class="skeleton" style="height:480px"></div><div class="skeleton" style="height:480px"></div></div>
+  }
+</div>

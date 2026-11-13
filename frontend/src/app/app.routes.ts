@@ -9,6 +9,8 @@ export const routes: Routes = [
       { path: '', title: 'Dourek · Faites la queue depuis chez vous', loadComponent: () => import('./pages/accueil/accueil').then((m) => m.Accueil) },
       { path: 'etablissements', title: 'Établissements · Dourek', loadComponent: () => import('./pages/recherche/recherche').then((m) => m.Recherche) },
       { path: 'etablissements/:slug', title: 'Établissement · Dourek', loadComponent: () => import('./pages/etablissement/etablissement').then((m) => m.Etablissement) },
+      { path: 'ticket', title: 'Mon ticket · Dourek', loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
+      { path: 'ticket/:code', title: 'Mon ticket · Dourek', loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
     ],
   },
   { path: '**', redirectTo: '' },
