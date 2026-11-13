@@ -47,7 +47,7 @@ public class GeminiClient {
     /** Modèles essayés d'office après celui de la configuration (alias officiels, toujours à jour). */
     private static final List<String> ALIAS = List.of("gemini-flash-lite-latest", "gemini-flash-latest");
     private static final int ESSAIS_MAX = 7;
-    private static final Duration DELAI_PAR_ESSAI = Duration.ofSeconds(15);
+    private static final Duration DELAI_PAR_ESSAI = Duration.ofSeconds(10);
     private static final Duration DELAI_TOTAL = Duration.ofSeconds(25);
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();

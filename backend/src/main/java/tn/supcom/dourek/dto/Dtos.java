@@ -113,8 +113,12 @@ public final class Dtos {
 
     public record AssistantRequest(@NotBlank @Size(max = 500) String message, Double lat, Double lng) {}
 
-    public record Criteres(String categorie, String prestation, String quartier, Integer avantHeure,
-                           Integer attenteMax, Boolean petitPrix) {}
+    /**
+     * Ce que l'assistant a compris de la demande : le besoin en quelques mots, les contraintes chiffrées et
+     * la priorité du client (ATTENTE, DISTANCE, NOTE ou PRIX). Une valeur absente (null) veut dire « non précisé ».
+     */
+    public record Criteres(String besoin, String prestation, String quartier, Integer avantHeure,
+                           Integer attenteMax, Double distanceMaxKm, Boolean petitPrix, String priorite) {}
 
     public record AssistantReponse(String reponse, Criteres criteres, List<EtablissementResume> resultats,
                                    String source) {}
