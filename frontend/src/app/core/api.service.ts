@@ -35,6 +35,11 @@ export class ApiService {
     return this.http.post<{ code: string; numero: string }>(`/api/etablissements/${slug}/tickets`, { prestationId, reponses, prioritaire });
   }
 
+  /** Adresse d'un point de la carte (OpenStreetMap / Nominatim, via notre serveur). */
+  adresse(lat: number, lng: number) {
+    return this.http.get<{ adresse: string; quartier: string }>('/api/geo/adresse', { params: { lat, lng } });
+  }
+  mesTickets(): Observable<TicketVue[]> { return this.http.get<TicketVue[]>('/api/client/tickets'); }
   ticket(code: string): Observable<TicketVue> { return this.http.get<TicketVue>(`/api/tickets/${code}`); }
   annuler(code: string): Observable<TicketVue> { return this.http.post<TicketVue>(`/api/tickets/${code}/annuler`, {}); }
   laisserPasser(code: string): Observable<TicketVue> { return this.http.post<TicketVue>(`/api/tickets/${code}/laisser-passer`, {}); }
@@ -46,6 +51,9 @@ export class ApiService {
 
   // ---- espace pro
   connexion(email: string, motDePasse: string) { return this.http.post<Session>('/api/auth/connexion', { email, motDePasse }); }
+  inscriptionClient(c: { nom: string; email: string; telephone: string; motDePasse: string }) {
+    return this.http.post<Session>('/api/auth/inscription-client', c);
+  }
   inscription(i: Inscription) { return this.http.post<Session>('/api/auth/inscription', i); }
   etatFile() { return this.http.get<EtatFile>('/api/pro/file'); }
   appelerSuivant() { return this.http.post<EtatFile>('/api/pro/file/appeler-suivant', {}); }

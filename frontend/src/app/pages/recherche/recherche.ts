@@ -33,7 +33,8 @@ export class Recherche implements OnInit {
   private destroy = inject(DestroyRef);
   protected readonly position = inject(PositionService);
 
-  protected readonly categories = CATEGORIES;
+  /** Catégories fixes + « Autres » + types créés par les gérants (lus en base). */
+  protected readonly categories = signal(CATEGORIES);
   protected readonly categorie = signal('');
   protected readonly texte = signal('');
   protected readonly vue = signal<'liste' | 'carte'>('liste');
@@ -52,6 +53,9 @@ export class Recherche implements OnInit {
   protected readonly fmt = { distance, note, badgeAttente, icone };
 
   protected readonly resultats = computed(() => {
+    // Après une question à l'assistant, la liste montre ses résultats, dans son ordre.
+    const ia = this.reponse();
+    if (ia) return ia.resultats;
     const f = this.filtres();
     const liste = (this.tous() ?? []).filter((e) =>
       (!f.ouvert || e.fileOuverte) && (!f.attente20 || e.attenteMinutes < 20) && (!f.km1 || e.distanceKm < 1) && (!f.note4 || e.note >= 4));
@@ -63,7 +67,7 @@ export class Recherche implements OnInit {
   });
 
   protected readonly titre = computed(() => {
-    const c = CATEGORIES.find((x) => x.code === this.categorie());
+    const c = this.categories().find((x) => x.code === this.categorie());
     const base = c && c.code ? c.libelle : this.texte() ? `« ${this.texte()} »` : 'Établissements';
     return `${base} près de l’Ariana`;
   });
@@ -83,6 +87,11 @@ export class Recherche implements OnInit {
     this.categorie.set(qp.get('categorie') ?? '');
     this.texte.set(qp.get('q') ?? '');
     if (qp.get('vue') === 'carte') this.vue.set('carte');
+    this.api.categories().subscribe((cs) => {
+      const libres = cs.filter((c) => c.libre).map((c) => ({ code: c.code, libelle: c.libelle }));
+      const autres = cs.find((c) => c.code === 'AUTRE');
+      this.categories.set([...CATEGORIES, ...(autres?.nombre ? [{ code: 'AUTRE', libelle: 'Autres' }] : []), ...libres]);
+    });
     // Liste affichée tout de suite (position par défaut), puis rechargée si le navigateur donne la position.
     this.charger();
     this.position.demander().then((trouvee) => { if (trouvee) this.charger(); });
@@ -126,6 +135,12 @@ export class Recherche implements OnInit {
       next: (r) => { this.reponse.set(r); this.reflechit.set(false); if (r.resultats[0]) this.selection.set(r.resultats[0].id); },
       error: (e) => { this.reponse.set({ reponse: messageErreur(e), criteres: null!, resultats: [], source: 'local' }); this.reflechit.set(false); },
     });
+  }
+
+  effacerAssistant() {
+    this.reponse.set(null);
+    this.question.set('');
+    this.router.navigate([], { queryParams: { assistant: null }, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   ouvrir(slug: string) { this.router.navigate(['/etablissements', slug]); }

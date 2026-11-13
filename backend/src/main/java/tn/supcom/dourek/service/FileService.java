@@ -1,5 +1,8 @@
 package tn.supcom.dourek.service;
 
+import tn.supcom.dourek.model.Utilisateur;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -99,7 +102,9 @@ public class FileService {
     // ------------------------------------------------------------------ client
 
     @Transactional
-    public TicketCree prendreTicket(String slug, PriseTicketRequest req) {
+    public TicketCree prendreTicket(String slug, PriseTicketRequest req, String emailClient) {
+        Utilisateur client = utilisateurs.findByEmailIgnoreCase(emailClient)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Connectez-vous pour prendre un ticket"));
         Long id = etablissements.findBySlug(slug).orElseThrow(() -> Introuvable.de("Établissement")).getId();
         Etablissement e = etablissements.verrouiller(id).orElseThrow();
         if (!e.isFileOuverte()) throw Introuvable.conflit("La file de cet établissement est en pause");
@@ -113,9 +118,10 @@ public class FileService {
         Map<String, Object> reponses = req.reponses() == null ? Map.of() : req.reponses();
         formulaireService.validerReponses(champs, reponses);
 
-        Ticket t = nouveauTicket(e, p, req.prioritaire());
-        t.setNomClient(texte(reponses.get("nom"), "Client"));
-        t.setTelephone(texte(reponses.get("telephone"), null));
+        Ticket t = nouveauTicket(e, p, Boolean.TRUE.equals(req.prioritaire()));
+        t.setClient(client);
+        t.setNomClient(texte(reponses.get("nom"), client.getNom()));
+        t.setTelephone(texte(reponses.get("telephone"), client.getTelephone()));
         t.setReponsesJson(formulaireService.ecrire(reponses));
         t.setFormulaireVersion(f == null ? 0 : f.getVersion());
         tickets.save(t);
@@ -142,6 +148,20 @@ public class FileService {
 
     private static String texte(Object v, String parDefaut) {
         return v == null || v.toString().isBlank() ? parDefaut : v.toString().trim();
+    }
+
+    /** Un client ne voit et ne modifie que ses propres tickets. */
+    @Transactional(readOnly = true)
+    public void verifierProprietaire(String code, String emailClient) {
+        Ticket t = tickets.findByCode(code).orElseThrow(() -> Introuvable.de("Ticket"));
+        if (t.getClient() == null || !t.getClient().getEmail().equalsIgnoreCase(emailClient))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ce ticket appartient à un autre compte");
+    }
+
+    /** Tickets du client connecté, du plus récent au plus ancien. */
+    @Transactional(readOnly = true)
+    public List<TicketVue> mesTickets(String emailClient) {
+        return tickets.findTop20ByClientEmailOrderByCreeLeDesc(emailClient).stream().map(t -> vue(t.getCode())).toList();
     }
 
     @Transactional(readOnly = true)
@@ -246,7 +266,7 @@ public class FileService {
         Prestation p = prestations.findById(req.prestationId())
                 .filter(x -> x.getEtablissement().getId().equals(e.getId()))
                 .orElseThrow(() -> Introuvable.requete("Prestation inconnue"));
-        Ticket t = nouveauTicket(e, p, req.prioritaire());
+        Ticket t = nouveauTicket(e, p, Boolean.TRUE.equals(req.prioritaire()));
         t.setNomClient(req.nom().trim());
         t.setSurPlace(true);
         t.setReponsesJson("{}");

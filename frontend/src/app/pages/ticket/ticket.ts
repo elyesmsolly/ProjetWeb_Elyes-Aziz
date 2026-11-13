@@ -34,6 +34,8 @@ export class Ticket {
   protected readonly enDirect = this.tempsReel.connecte;
 
   protected readonly t = signal<TicketVue | null>(null);
+  protected readonly historique = signal<TicketVue[] | null>(null);
+
   protected readonly erreur = signal<string | null>(null);
   protected readonly majIl = signal(0);
   protected readonly confirmerAnnulation = signal(false);
@@ -63,10 +65,17 @@ export class Ticket {
 
   constructor() {
     effect(() => {
-      const code = this.code() ?? this.dernier.code();
-      if (!this.code() && code) { this.router.navigate(['/ticket', code], { replaceUrl: true }); return; }
-      if (!code) return;
-      this.charger(code);
+      const code = this.code();
+      if (code) { this.charger(code); return; }
+      // « Mon ticket » sans code : on ouvre le ticket en cours du compte, sinon on montre l'historique.
+      this.api.mesTickets().subscribe({
+        next: (liste) => {
+          const actif = liste.find((x) => x.statut === 'EN_ATTENTE' || x.statut === 'APPELE');
+          if (actif) this.router.navigate(['/ticket', actif.code], { replaceUrl: true });
+          else this.historique.set(liste);
+        },
+        error: (e) => this.erreur.set(messageErreur(e)),
+      });
     });
     const minuteur = setInterval(() => this.majIl.set(Math.round((Date.now() - this.derniereMaj) / 1000)), 1000);
     this.destroy.onDestroy(() => clearInterval(minuteur));
@@ -83,6 +92,7 @@ export class Ticket {
       },
       error: (e) => {
         if (e.status === 404) { this.dernier.oublier(); this.erreur.set('Ce ticket n’existe plus.'); }
+        else if (e.status === 403) this.erreur.set('Ce ticket appartient à un autre compte.');
         else this.erreur.set(messageErreur(e));
       },
     });

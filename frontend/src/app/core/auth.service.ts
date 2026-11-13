@@ -5,12 +5,14 @@ import { Session } from './models';
 
 const CLE = 'dourek.session';
 
-/** Session de l'espace pro (jeton JWT gardé dans le navigateur). */
+/** Session (client ou espace pro) : jeton JWT gardé dans le navigateur. */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly session = signal<Session | null>(lire());
   readonly connecte = computed(() => this.session() !== null);
   readonly gerant = computed(() => this.session()?.role === 'GERANT');
+  readonly client = computed(() => this.session()?.role === 'CLIENT');
+  readonly pro = computed(() => this.connecte() && !this.client());
 
   ouvrir(s: Session) {
     this.session.set(s);
@@ -32,21 +34,28 @@ function lire(): Session | null {
   } catch { return null; }
 }
 
-/** Ajoute le jeton aux appels /api/pro et déconnecte si le serveur le refuse. */
+/** Ajoute le jeton aux appels de l'API (sauf connexion / inscription). */
 export const jetonInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const token = auth.session()?.token;
-  if (token && req.url.startsWith('/api/pro')) req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+  if (token && req.url.startsWith('/api/') && !req.url.startsWith('/api/auth/'))
+    req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   return next(req);
+};
+
+/** Pages du client (ticket, suivi) : il faut être connecté avec un compte client. */
+export const clientGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthService);
+  return auth.client() ? true : inject(Router).createUrlTree(['/connexion'], { queryParams: { retour: state.url } });
 };
 
 export const proGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
-  return auth.connecte() ? true : inject(Router).createUrlTree(['/pro/connexion']);
+  return auth.pro() ? true : inject(Router).createUrlTree(['/pro/connexion']);
 };
 
 export const gerantGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
-  if (!auth.connecte()) return inject(Router).createUrlTree(['/pro/connexion']);
+  if (!auth.pro()) return inject(Router).createUrlTree(['/pro/connexion']);
   return auth.gerant() ? true : inject(Router).createUrlTree(['/pro/employe']);
 };

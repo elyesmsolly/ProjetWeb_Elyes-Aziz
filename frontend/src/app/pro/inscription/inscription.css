@@ -44,3 +44,4 @@
   .hours { grid-template-columns: 84px 1fr 1fr 40px; }
   .principal { padding: 20px; }
 }
+.autre { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; max-width: 360px; }

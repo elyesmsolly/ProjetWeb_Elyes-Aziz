@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { gerantGuard, proGuard } from './core/auth.service';
+import { clientGuard, gerantGuard, proGuard } from './core/auth.service';
 import { PublicLayout } from './shared/public-layout';
 import { ProLayout } from './shared/pro-layout';
 
@@ -11,8 +11,10 @@ export const routes: Routes = [
       { path: '', title: 'Dourek · Faites la queue depuis chez vous', loadComponent: () => import('./pages/accueil/accueil').then((m) => m.Accueil) },
       { path: 'etablissements', title: 'Établissements · Dourek', loadComponent: () => import('./pages/recherche/recherche').then((m) => m.Recherche) },
       { path: 'etablissements/:slug', title: 'Établissement · Dourek', loadComponent: () => import('./pages/etablissement/etablissement').then((m) => m.Etablissement) },
-      { path: 'ticket', title: 'Mon ticket · Dourek', loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
-      { path: 'ticket/:code', title: 'Mon ticket · Dourek', loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
+      { path: 'ticket', title: 'Mon ticket · Dourek', canActivate: [clientGuard], loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
+      { path: 'ticket/:code', title: 'Mon ticket · Dourek', canActivate: [clientGuard], loadComponent: () => import('./pages/ticket/ticket').then((m) => m.Ticket) },
+      { path: 'connexion', title: 'Connexion · Dourek', data: { mode: 'connexion' }, loadComponent: () => import('./pages/compte/compte').then((m) => m.Compte) },
+      { path: 'inscription', title: 'Créer un compte · Dourek', data: { mode: 'inscription' }, loadComponent: () => import('./pages/compte/compte').then((m) => m.Compte) },
       { path: 'pro/connexion', title: 'Espace pro · Dourek', loadComponent: () => import('./pro/connexion/connexion').then((m) => m.Connexion) },
     ],
   },

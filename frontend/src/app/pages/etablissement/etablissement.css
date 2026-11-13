@@ -42,3 +42,6 @@ h1 { font-size: clamp(28px, 4vw, 36px); }
   .svc > .small { display: none; }
   .live .v { font-size: 22px; }
 }
+
+.connecte-toi { display: flex; flex-direction: column; gap: 14px; }
+.connecte-toi p { margin: 0; }

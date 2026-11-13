@@ -112,6 +112,9 @@ public class DonneesDemo implements CommandLineRunner {
         utilisateurs.save(new Utilisateur("karim@dourek.tn", mdp, "Karim", Role.GERANT, karim, "Poste 1"));
         utilisateurs.save(new Utilisateur("sami@dourek.tn", mdp, "Sami", Role.EMPLOYE, karim, "Poste 2"));
         utilisateurs.save(new Utilisateur("labo@dourek.tn", mdp, "Dr Ben Ali", Role.GERANT, labo, "Poste 1"));
+        Utilisateur client = new Utilisateur("client@dourek.tn", mdp, "Yassine Trabelsi", Role.CLIENT, null, null);
+        client.setTelephone("22 123 456");
+        utilisateurs.save(client);
 
         remplirFiles(tous, karim);
         log.info("Données de démonstration créées : {} établissements. Connexion pro : karim@dourek.tn / {}", tous.size(), MOT_DE_PASSE);

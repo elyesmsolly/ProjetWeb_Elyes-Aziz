@@ -36,10 +36,28 @@ public class RechercheService {
     public List<EtablissementResume> rechercher(String categorie, String texte, Double lat, Double lng) {
         double la = lat == null ? LAT_ARIANA : lat, lo = lng == null ? LNG_ARIANA : lng;
         String q = normaliser(texte);
-        List<EtablissementResume> res = new ArrayList<>();
+        // « coiffeur », « barbe », « analyse »… : on devine d'abord la catégorie, puis on cherche les autres mots.
+        Categorie devinee = q.isBlank() || (categorie != null && !categorie.isBlank()) ? null : categorieDepuisTexte(q);
+        List<String> mots = motsUtiles(q);
+        // Les mots qui ont servi à deviner la catégorie (« coiffeur », « coupe »…) ne départagent plus.
+        if (devinee != null) mots.removeIf(m -> categorieDepuisTexte(m) != null || m.equals("homme") || m.equals("femme"));
+        List<Etablissement> retenus = new ArrayList<>();
+        java.util.Map<Etablissement, Integer> points = new java.util.HashMap<>();
         for (Etablissement e : etablissements.findAll()) {
-            if (categorie != null && !categorie.isBlank() && !e.getCategorie().name().equalsIgnoreCase(categorie)) continue;
-            if (!q.isBlank() && !correspond(e, q)) continue;
+            if (categorie != null && !categorie.isBlank() && !memeCategorie(e, categorie)) continue;
+            if (devinee != null && e.getCategorie() != devinee) continue;
+            retenus.add(e);
+            points.put(e, motsTrouves(e, mots));
+        }
+        // On garde les établissements qui correspondent au plus grand nombre de mots
+        // (« Barber Ennasr » ne renvoie que Barber Ennasr, « coupe pas cher » renvoie tous les barbiers).
+        int max = points.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        if (!mots.isEmpty() && (max > 0 || devinee == null)) {
+            final int seuil = max;
+            retenus.removeIf(e -> points.get(e) < seuil || seuil == 0);
+        }
+        List<EtablissementResume> res = new ArrayList<>();
+        for (Etablissement e : retenus) {
             res.add(resume(e, la, lo, false));
         }
         res.sort(Comparator.comparingDouble(EtablissementResume::score));
@@ -63,7 +81,7 @@ public class RechercheService {
                 .map(p -> new PrestationDto(p.getId(), p.getNom(), p.getDescription(), p.getDureeMinutes(), p.getPrix()))
                 .toList();
         return new EtablissementResume(e.getId(), e.getSlug(), e.getNom(), e.getCategorie().name(),
-                e.getCategorie().getLibelle(), e.getQuartier(), e.getAdresse(), e.getLatitude(), e.getLongitude(),
+                e.libelleCategorie(), e.getQuartier(), e.getAdresse(), e.getLatitude(), e.getLongitude(),
                 Math.round(km * 100) / 100.0, e.getNote(), e.getNombreAvis(), e.isFileOuverte(), e.getHeureFermeture(),
                 personnes, attente, e.getPostesOuverts(), prest, score(attente, km, e.getNote(), e.isFileOuverte()), meilleur);
     }
@@ -92,13 +110,36 @@ public class RechercheService {
                 r.score(), true);
     }
 
-    private static boolean correspond(Etablissement e, String q) {
-        StringBuilder sb = new StringBuilder(e.getNom()).append(' ').append(e.getCategorie().getLibelle())
+    /** Le filtre accepte un code (BARBIER, AUTRE…) ou un type libre créé par un gérant (ex. « Pressing »). */
+    private static boolean memeCategorie(Etablissement e, String categorie) {
+        if (e.getCategorie().name().equalsIgnoreCase(categorie)) return true;
+        return e.getCategorieLibre() != null && normaliser(e.getCategorieLibre()).equals(normaliser(categorie));
+    }
+
+    /** Mots qui ne disent rien sur l'établissement recherché. */
+    private static final java.util.Set<String> VIDES = java.util.Set.of("les", "des", "une", "pour", "avec", "chez", "pas",
+            "cher", "trop", "pres", "proche", "moi", "vite", "possible", "avant", "apres", "dans", "sur", "qui", "est",
+            "veux", "voudrais", "cherche", "besoin", "faire", "tunis", "maintenant", "aujourd", "hui", "bon", "bien");
+
+    static List<String> motsUtiles(String q) {
+        List<String> mots = new ArrayList<>();
+        for (String m : q.split("[^a-z0-9]+")) if (m.length() > 2 && !VIDES.contains(m)) mots.add(m);
+        return mots;
+    }
+
+    /**
+     * Nombre de mots utiles présents dans la fiche (nom, type, quartier, adresse,
+     * prestations). On compare aussi le début du mot (« coiffeur » trouve « coiffure »).
+     */
+    private static int motsTrouves(Etablissement e, List<String> mots) {
+        StringBuilder sb = new StringBuilder(e.getNom()).append(' ').append(e.libelleCategorie())
                 .append(' ').append(e.getQuartier()).append(' ').append(e.getAdresse());
         e.getPrestations().forEach(p -> sb.append(' ').append(p.getNom()));
         String cible = normaliser(sb.toString());
-        for (String mot : q.split("\\s+")) if (mot.length() > 2 && !cible.contains(mot)) return false;
-        return true;
+        int n = 0;
+        for (String mot : mots)
+            if (cible.contains(mot) || (mot.length() >= 5 && cible.contains(mot.substring(0, 5)))) n++;
+        return n;
     }
 
     public static String normaliser(String s) {
@@ -108,11 +149,12 @@ public class RechercheService {
 
     public static Categorie categorieDepuisTexte(String q) {
         String t = normaliser(q);
-        if (t.matches(".*(barb|coupe homme|degrade|barbier).*")) return Categorie.BARBIER;
-        if (t.matches(".*(coiff|brushing|couleur|meche).*")) return t.contains("homme") ? Categorie.BARBIER : Categorie.COIFFURE_FEMME;
-        if (t.matches(".*(labo|analyse|prise de sang|bilan).*")) return Categorie.LABORATOIRE;
-        if (t.matches(".*(banque|agence|poste|operateur|telephon).*")) return Categorie.AGENCE;
-        if (t.matches(".*(mairie|municipal|administration|papier|extrait).*")) return Categorie.ADMINISTRATION;
+        if (t.matches(".*(labo|analyse|prise de sang|bilan|sang).*")) return Categorie.LABORATOIRE;
+        if (t.matches(".*(banque|agence|poste|operateur|telephon|facture|abonnement).*")) return Categorie.AGENCE;
+        if (t.matches(".*(mairie|municipal|administration|papier|extrait|legalisation|signature).*")) return Categorie.ADMINISTRATION;
+        if (t.matches(".*(femme|dame|brushing|meche|couleur|lissage).*") && t.matches(".*(coiff|coupe|brushing|meche|couleur|lissage|salon).*"))
+            return Categorie.COIFFURE_FEMME;
+        if (t.matches(".*(barb|coupe|degrade|coiff|rasage|cheveu).*")) return Categorie.BARBIER;
         return null;
     }
 }

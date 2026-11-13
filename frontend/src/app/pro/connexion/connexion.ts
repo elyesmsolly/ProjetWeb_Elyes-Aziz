@@ -40,6 +40,11 @@ export class Connexion {
     this.envoi.set(true);
     this.api.connexion(this.email().trim(), this.motDePasse()).subscribe({
       next: (s) => {
+        if (s.role === 'CLIENT') {
+          this.erreur.set('Ce compte est un compte client : connectez-vous depuis « Se connecter » en haut de la page.');
+          this.envoi.set(false);
+          return;
+        }
         this.auth.ouvrir(s);
         this.router.navigateByUrl(s.role === 'GERANT' && this.role() === 'GERANT' ? '/pro/tableau-de-bord' : '/pro/employe');
       },

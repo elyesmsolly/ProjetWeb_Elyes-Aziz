@@ -27,7 +27,7 @@ export interface EtablissementDetail {
   resume: EtablissementResume; description: string; horaires: string; telephone: string; formulaire: Formulaire;
 }
 
-export interface Categorie { code: string; libelle: string; nombre: number; }
+export interface Categorie { code: string; libelle: string; nombre: number; libre?: boolean; }
 
 export interface PastilleFile { numero: string; etat: 'SERVI_EN_COURS' | 'ATTENTE' | 'MOI'; }
 
@@ -59,8 +59,8 @@ export interface Statistiques {
 }
 
 export interface Session {
-  token: string; nom: string; role: 'GERANT' | 'EMPLOYE'; etablissementId: number;
-  etablissementNom: string; slug: string; poste: string;
+  token: string; nom: string; role: 'GERANT' | 'EMPLOYE' | 'CLIENT'; etablissementId: number | null;
+  etablissementNom: string | null; slug: string | null; poste: string | null; email: string; telephone: string | null;
 }
 
 export interface Criteres {
@@ -72,7 +72,7 @@ export interface AssistantReponse { reponse: string; criteres: Criteres; resulta
 
 export interface Inscription {
   nom: string; email: string; motDePasse: string; nomEtablissement: string; telephone: string;
-  categorie: string; adresse: string; quartier: string; latitude: number; longitude: number;
+  categorie: string; categorieLibre: string | null; adresse: string; quartier: string; latitude: number; longitude: number;
   heureOuverture: number; heureFermeture: number; horaires: string; postes: number;
   prestations: Omit<Prestation, 'id'>[]; champs: ChampFormulaire[];
 }

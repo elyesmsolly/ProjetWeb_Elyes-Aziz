@@ -11,7 +11,7 @@
   </div>
 
   <div class="row wrap filtres">
-    @for (c of categories; track c.code) {
+    @for (c of categories(); track c.code) {
       <button class="chip" [class.on]="categorie() === c.code" (click)="choisirCategorie(c.code)">{{ c.libelle }}</button>
     }
     <span class="sep"></span>
@@ -45,13 +45,10 @@
           </form>
           @if (reponse(); as r) {
             <p class="reponse"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
-            @if (r.resultats.length) {
-              <div class="row wrap propositions">
-                @for (e of r.resultats; track e.id; let i = $index) {
-                  <a class="chip" [class.on]="i === 0" [routerLink]="['/etablissements', e.slug]">{{ i + 1 }}. {{ e.nom }} · ~{{ e.attenteMinutes }} min</a>
-                }
-              </div>
-            }
+            <div class="row wrap propositions">
+              <span class="small muted">La liste ci-dessous montre les {{ r.resultats.length }} résultat{{ r.resultats.length > 1 ? 's' : '' }} de l’assistant.</span>
+              <button type="button" class="chip" (click)="effacerAssistant()">Voir tous les établissements</button>
+            </div>
           } @else if (reflechit()) {
             <p class="reponse muted">L’assistant analyse votre demande…</p>
           } @else {
@@ -59,7 +56,7 @@
           }
           <div class="small muted note">
             Classement calculé par Dourek (distance, attente, avis). L’assistant explique, il ne décide pas.
-            @if (reponse()?.source === 'local') { <span>(mode hors ligne)</span> }
+            @if (reponse()?.source === 'local') { <span>(analyse locale : l’IA Claude n’est pas configurée sur ce serveur)</span> }
           </div>
         </div>
       </div>

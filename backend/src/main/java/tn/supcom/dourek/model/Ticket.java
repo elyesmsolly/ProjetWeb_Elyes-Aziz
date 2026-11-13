@@ -36,6 +36,10 @@ public class Ticket {
     /** Ajouté au guichet par un employé (client sans smartphone). */
     private boolean surPlace;
 
+    /** Compte du client qui a pris le ticket (vide pour un client ajouté sur place). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Utilisateur client;
+
     private String nomClient;
     private String telephone;
 
@@ -69,6 +73,8 @@ public class Ticket {
     public void setPrioritaire(boolean prioritaire) { this.prioritaire = prioritaire; }
     public boolean isSurPlace() { return surPlace; }
     public void setSurPlace(boolean surPlace) { this.surPlace = surPlace; }
+    public Utilisateur getClient() { return client; }
+    public void setClient(Utilisateur client) { this.client = client; }
     public String getNomClient() { return nomClient; }
     public void setNomClient(String nomClient) { this.nomClient = nomClient; }
     public String getTelephone() { return telephone; }

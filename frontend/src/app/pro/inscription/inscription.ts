@@ -13,7 +13,7 @@ import { FormulaireService } from '../../shared/modeles';
 const ETAPES = ['Compte', 'Établissement', 'Services & postes', 'Formulaire client', 'Terminé'];
 const CATEGORIES = [
   { code: 'BARBIER', libelle: 'Barbier' }, { code: 'COIFFURE_FEMME', libelle: 'Coiffure femme' }, { code: 'LABORATOIRE', libelle: 'Laboratoire' },
-  { code: 'AGENCE', libelle: 'Agence' }, { code: 'ADMINISTRATION', libelle: 'Administration' }, { code: 'AUTRE', libelle: 'Autre' },
+  { code: 'AGENCE', libelle: 'Agence' }, { code: 'ADMINISTRATION', libelle: 'Administration' }, { code: 'AUTRE', libelle: 'Autres' },
 ];
 
 interface PrestationSaisie { nom: string; description: string; dureeMinutes: number; prix: number; }
@@ -46,9 +46,12 @@ export class Inscription {
   protected readonly nomEtab = signal('');
   protected readonly telephone = signal('');
   protected readonly categorie = signal('BARBIER');
+  /** Type d'activité saisi quand « Autres » est choisi (ex. « Pressing »). */
+  protected readonly categorieLibre = signal('');
   protected readonly adresse = signal('');
   protected readonly quartier = signal('Ariana');
   protected readonly pos = signal({ lat: 36.8625, lng: 10.1956 });
+  protected readonly etatAdresse = signal<'' | 'recherche' | 'ok' | 'erreur'>('');
   protected readonly ouverture = signal(9);
   protected readonly fermeture = signal(20);
   protected readonly dimanche = signal(false);
@@ -60,7 +63,8 @@ export class Inscription {
 
   protected readonly reperes = computed(() => [{ id: 1, lat: this.pos().lat, lng: this.pos().lng, texte: this.nomEtab() || 'Mon établissement' }]);
   protected readonly icone = computed(() => icone(this.categorie()));
-  protected readonly libelleCategorie = computed(() => CATEGORIES.find((c) => c.code === this.categorie())?.libelle ?? '');
+  protected readonly libelleCategorie = computed(() => this.categorie() === 'AUTRE' && this.categorieLibre().trim()
+    ? this.categorieLibre().trim().charAt(0).toUpperCase() + this.categorieLibre().trim().slice(1) : CATEGORIES.find((c) => c.code === this.categorie())?.libelle ?? '');
   protected readonly Math = Math;
   protected readonly heures = Array.from({ length: 18 }, (_, i) => i + 6);
 
@@ -73,6 +77,7 @@ export class Inscription {
         return null;
       case 1:
         if (!this.nomEtab().trim()) return 'Indiquez le nom de l’établissement.';
+        if (this.categorie() === 'AUTRE' && !this.categorieLibre().trim()) return 'Précisez votre type d’activité (ex. Pressing).';
         if (!this.adresse().trim()) return 'Indiquez l’adresse.';
         if (this.fermeture() <= this.ouverture()) return 'L’heure de fermeture doit être après l’ouverture.';
         return null;
@@ -94,6 +99,21 @@ export class Inscription {
 
   retour() { this.erreur.set(null); this.etape.update((x) => Math.max(0, x - 1)); }
 
+  /** Clic sur la carte : on place le repère et on écrit l'adresse et le quartier dans les champs. */
+  placer(p: { lat: number; lng: number }) {
+    this.pos.set(p);
+    this.etatAdresse.set('recherche');
+    this.api.adresse(p.lat, p.lng).subscribe({
+      next: (a) => {
+        if (a.adresse) this.adresse.set(a.adresse);
+        if (a.quartier) this.quartier.set(a.quartier);
+        this.etatAdresse.set('ok');
+        this.erreur.set(null);
+      },
+      error: () => this.etatAdresse.set('erreur'),
+    });
+  }
+
   ajouterPrestation() { this.prestations.update((l) => [...l, { nom: '', description: '', dureeMinutes: 15, prix: 10 }]); }
   retirerPrestation(i: number) { this.prestations.update((l) => l.filter((_, k) => k !== i)); }
   modifierPrestation(i: number, ch: Partial<PrestationSaisie>) { this.prestations.update((l) => l.map((p, k) => (k === i ? { ...p, ...ch } : p))); }
@@ -104,7 +124,8 @@ export class Inscription {
     const horaires = `Lun – Sam : ${this.ouverture()} h – ${this.fermeture()} h\nDimanche : ${this.dimanche() ? `${this.ouverture()} h – ${this.fermeture()} h` : 'fermé'}`;
     this.api.inscription({
       nom: this.nom().trim(), email: this.email().trim(), motDePasse: this.motDePasse(), nomEtablissement: this.nomEtab().trim(),
-      telephone: this.telephone(), categorie: this.categorie(), adresse: this.adresse().trim(), quartier: this.quartier().trim(),
+      telephone: this.telephone(), categorie: this.categorie(),
+      categorieLibre: this.categorie() === 'AUTRE' ? this.categorieLibre().trim() : null, adresse: this.adresse().trim(), quartier: this.quartier().trim(),
       latitude: this.pos().lat, longitude: this.pos().lng, heureOuverture: this.ouverture(), heureFermeture: this.fermeture(),
       horaires, postes: this.postes(), prestations: this.prestations(), champs: this.champs(),
     }).subscribe({

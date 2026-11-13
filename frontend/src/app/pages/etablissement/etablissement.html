@@ -58,6 +58,17 @@
         </div>
       </div>
 
+      @if (!auth.client()) {
+      <div class="card sticky form connecte-toi">
+        <h2>2. Prendre un ticket</h2>
+        <p class="muted">Connectez-vous pour prendre un ticket chez {{ r.nom }} et suivre votre place en direct.</p>
+        <div class="row between small resume">
+          <span class="muted">{{ prestation()?.nom }} · passage estimé</span><b>vers {{ passage() }}</b>
+        </div>
+        <a class="btn lg block" routerLink="/connexion" [queryParams]="{ retour: '/etablissements/' + slug() }">Se connecter <app-icon name="arrow" /></a>
+        <a class="btn ghost block" routerLink="/inscription" [queryParams]="{ retour: '/etablissements/' + slug() }">Créer un compte gratuit</a>
+      </div>
+      } @else {
       <form class="card sticky form" (ngSubmit)="prendreTicket()" novalidate>
         <h2>2. Vos informations</h2>
         <div class="small muted sous">Formulaire demandé par {{ r.nom }} · v{{ d.formulaire.version }}</div>
@@ -78,6 +89,7 @@
         </button>
         <div class="small muted centre">Gratuit · vous pourrez annuler à tout moment</div>
       </form>
+      }
     </div>
   } @else {
     <div class="skeleton" style="height:220px;margin-top:24px;border-radius:16px"></div>

@@ -22,6 +22,9 @@ public class Etablissement {
     @Column(nullable = false)
     private Categorie categorie;
 
+    /** Type d'activité saisi par le gérant quand il choisit « Autres » (ex. « Pressing »). */
+    private String categorieLibre;
+
     private String telephone;
     private String adresse;
     private String quartier;
@@ -59,6 +62,12 @@ public class Etablissement {
     public void setNom(String nom) { this.nom = nom; }
     public Categorie getCategorie() { return categorie; }
     public void setCategorie(Categorie categorie) { this.categorie = categorie; }
+    public String getCategorieLibre() { return categorieLibre; }
+    public void setCategorieLibre(String categorieLibre) { this.categorieLibre = categorieLibre; }
+    /** Libellé affiché : le texte libre pour « Autres », sinon le libellé de la catégorie. */
+    public String libelleCategorie() {
+        return categorie == Categorie.AUTRE && categorieLibre != null && !categorieLibre.isBlank() ? categorieLibre : categorie.getLibelle();
+    }
     public String getTelephone() { return telephone; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
     public String getAdresse() { return adresse; }

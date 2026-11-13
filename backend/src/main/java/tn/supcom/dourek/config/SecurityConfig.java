@@ -1,5 +1,6 @@
 package tn.supcom.dourek.config;
 
+import org.springframework.http.HttpMethod;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -28,8 +29,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * Sécurité : API publique pour les clients (recherche, ticket), espace /api/pro protégé par un jeton JWT.
- * Le rôle (GERANT ou EMPLOYE) est dans le jeton ; les mots de passe sont hachés avec BCrypt.
+ * Sécurité : recherche publique ; tickets réservés au client connecté ; espace /api/pro protégé.
+ * Le rôle (CLIENT, GERANT ou EMPLOYE) est dans le jeton ; les mots de passe sont hachés avec BCrypt.
  */
 @Configuration
 public class SecurityConfig {
@@ -42,6 +43,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/api/pro/gerant/**").hasRole("GERANT")
                 .requestMatchers("/api/pro/**").hasAnyRole("GERANT", "EMPLOYE")
+                // Tout ce qui concerne un ticket est réservé au client connecté.
+                .requestMatchers(HttpMethod.POST, "/api/etablissements/*/tickets").hasRole("CLIENT")
+                .requestMatchers("/api/tickets/**", "/api/client/**").hasRole("CLIENT")
                 .anyRequest().permitAll())
             .oauth2ResourceServer(o -> o.jwt(j -> j.jwtAuthenticationConverter(convertisseur())));
         return http.build();

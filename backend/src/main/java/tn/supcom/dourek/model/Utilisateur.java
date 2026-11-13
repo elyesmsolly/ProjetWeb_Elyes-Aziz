@@ -2,7 +2,7 @@ package tn.supcom.dourek.model;
 
 import jakarta.persistence.*;
 
-/** Compte de l'espace pro (gérant ou employé). Les clients n'ont pas besoin de compte. */
+/** Compte Dourek : client, ou membre de l'espace pro (gérant, employé) rattaché à un établissement. */
 @Entity
 @Table(name = "profils")
 public class Utilisateur {
@@ -25,8 +25,12 @@ public class Utilisateur {
     @Column(nullable = false)
     private Role role;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    /** Vide pour un client. */
+    @ManyToOne(fetch = FetchType.LAZY)
     private Etablissement etablissement;
+
+    /** Téléphone du client (alertes). */
+    private String telephone;
 
     /** Nom du poste de l'employé, ex. "Poste 2". */
     private String poste;
@@ -49,4 +53,6 @@ public class Utilisateur {
     public Role getRole() { return role; }
     public Etablissement getEtablissement() { return etablissement; }
     public String getPoste() { return poste; }
+    public String getTelephone() { return telephone; }
+    public void setTelephone(String telephone) { this.telephone = telephone; }
 }

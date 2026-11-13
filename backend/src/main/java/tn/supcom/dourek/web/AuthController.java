@@ -21,6 +21,12 @@ public class AuthController {
         return auth.connexion(req);
     }
 
+    @PostMapping("/inscription-client")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthReponse inscriptionClient(@Valid @RequestBody InscriptionClientRequest req) {
+        return auth.inscriptionClient(req);
+    }
+
     @PostMapping("/inscription")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthReponse inscription(@Valid @RequestBody InscriptionRequest req) {
