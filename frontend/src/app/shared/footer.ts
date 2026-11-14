@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-footer',
@@ -13,9 +14,14 @@ import { RouterLink } from '@angular/router';
         <p>Faites la queue depuis chez vous.<br />Projet Web · SUP'COM 2026/2027<br />Med Elyes Msolly · Med Aziz Ghazouani</p>
       </div>
       <div><h2>Clients</h2><ul>
-        <li><a routerLink="/etablissements">Trouver un établissement</a></li>
-        <li><a routerLink="/ticket">Suivre mon ticket</a></li>
-        <li><a routerLink="/etablissements" fragment="assistant">Assistant de recherche</a></li></ul></div>
+        @if (auth.connecte()) {
+          <li><a routerLink="/etablissements">Trouver un établissement</a></li>
+          <li><a routerLink="/ticket">Suivre mes tickets</a></li>
+          <li><a routerLink="/etablissements" fragment="assistant">Recherche avec l’IA</a></li>
+        } @else {
+          <li><a routerLink="/connexion">Se connecter</a></li>
+          <li><a routerLink="/inscription">Créer un compte</a></li>
+        }</ul></div>
       <div><h2>Professionnels</h2><ul>
         <li><a routerLink="/pro/inscription">Créer ma file</a></li>
         <li><a routerLink="/pro/tableau-de-bord">Tableau de bord</a></li>
@@ -36,4 +42,6 @@ import { RouterLink } from '@angular/router';
   .copy { grid-column: 1 / -1; border-top: 1px solid rgba(255,255,255,.15); padding-top: 16px; font-size: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   @media (max-width: 760px) { .grid { grid-template-columns: 1fr 1fr; } .grid > div:first-child { grid-column: 1 / -1; } }`,
 })
-export class Footer {}
+export class Footer {
+  protected readonly auth = inject(AuthService);
+}

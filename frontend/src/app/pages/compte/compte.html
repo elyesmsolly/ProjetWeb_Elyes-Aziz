@@ -7,7 +7,7 @@
 
     @if (mode() === 'connexion') {
       <h1>Bon retour</h1>
-      <p class="small muted sous">Connectez-vous pour prendre un ticket et suivre votre place en direct.</p>
+      <p class="small muted sous">Connectez-vous pour trouver un établissement, prendre un ticket et suivre votre place en direct.</p>
     } @else {
       <h1>Créer mon compte client</h1>
       <p class="small muted sous">Gratuit. Votre nom et votre téléphone seront proposés à chaque ticket.</p>
@@ -49,9 +49,6 @@
       {{ mode() === 'connexion' ? 'Se connecter' : 'Créer mon compte' }} <app-icon name="arrow" />
     </button>
 
-    @if (mode() === 'connexion') {
-      <button type="button" class="btn ghost sm demo" (click)="remplirDemo()">Remplir avec le compte de démo</button>
-    }
     <p class="small muted centre pro">Vous êtes un commerce ? <a class="lien" routerLink="/pro/connexion">Espace pro</a></p>
   </form>
 </div>
