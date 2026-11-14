@@ -28,23 +28,27 @@ Tout tourne en local, sans déploiement.
 ## 2. Fonctionnalités réalisées
 
 ### Côté client
-- **Compte client** (`/connexion`, `/inscription`) : nom, e-mail, téléphone et mot de passe.
-  - Prendre un ticket et voir « Mon ticket » demande d'être connecté en tant que client.
-  - `/ticket` ouvre le ticket en cours, sinon la liste des derniers tickets du client.
+- **Connexion d'abord** : le site s'ouvre sur la page de connexion (`/connexion`, `/inscription` pour créer un compte).
+  - Sans compte, l'accueil, les établissements et les tickets ne sont pas accessibles, et l'en-tête ne montre pas leurs onglets ; l'adresse demandée est rouverte après la connexion.
+  - La session dure le temps de l'onglet (`sessionStorage`) : à chaque nouvelle ouverture du site, on repasse par la connexion. On peut donc ouvrir un compte client dans un onglet et un compte pro dans un autre.
   - Un client ne peut voir que ses propres tickets (403 sinon).
 - **Accueil** : recherche par service et lieu, catégories, établissements proches avec leur attente en direct.
+  - L'espace ticket montre le **vrai ticket du compte connecté**, jamais un exemple : « Vous n'avez pas de ticket en cours », ou le ticket qui passe le plus tôt (numéro, personnes avant vous, heure estimée), mis à jour en direct, suivi des autres tickets en cours.
+  - Un clic sur cet espace ouvre **Mes tickets** (`/ticket`) : le ticket en cours s'il n'y en a qu'un, sinon la liste des tickets en cours (celui qui passe le plus tôt en premier), puis les anciens.
 - **Recherche** (`/etablissements`) :
   - filtres par catégorie, « ouvert maintenant », attente < 20 min, < 1 km et note 4+ ;
   - tri, vue liste ou carte ;
   - temps d'attente mis à jour en direct ;
   - un seul champ et **deux boutons** : « Rechercher » (recherche normale, sans IA) et « Rechercher avec l'IA » ; le client choisit ;
   - la recherche normale devine la catégorie (« coiffure » → barbiers et coiffure femme, « barbe » → barbiers) puis garde les établissements qui correspondent le mieux aux autres mots ;
+  - les fautes de frappe sont corrigées (« caffe » → café, « coifure » → coiffure) : un mot inconnu est remplacé par le mot connu le plus proche ;
   - les catégories « Autres » créées par les gérants (ex. Pressing) apparaissent comme filtres.
 - **Carte** (OpenStreetMap + Leaflet, gratuit, sans clé) : bouton plein écran, touche Échap pour fermer.
 - **Recherche avec l'IA** : « je veux boire quelque chose », « une coiffure à moins de 3,5 km », « le barbier le mieux noté ».
   - IA au choix : Google Gemini (gratuit) ou Claude ; sans clé, analyse locale par mots-clés.
   - L'IA lit la demande et la liste des établissements inscrits, puis renvoie en **sortie structurée** ceux qui répondent au besoin (« boire » → le café et le salon de thé) et les contraintes de la phrase : distance, attente, heure, quartier, budget, priorité.
   - **Notre code contrôle et classe** : identifiants inconnus ignorés, contraintes appliquées avec nos mesures de distance et d'attente, classement par attente, distance et avis (ou selon la priorité demandée).
+  - **Liste toujours complète pour un type** : quand la demande nomme seulement un type de service (« caffe », « coiffure à moins de 3 km »), notre code ajoute les établissements de ce type que le modèle aurait oubliés (« caffe » → les deux cafés et le salon de thé). Le modèle peut aussi citer un type entier, et c'est notre code qui en énumère les établissements.
   - Tous les établissements qui correspondent sont listés ; le premier ouvert porte la marque **« Choix de l'assistant »** et l'IA explique ce choix en deux phrases.
 - **Page établissement** :
   - prestations avec durée et prix, et statistiques en direct (personnes en attente, attente estimée, postes ouverts) ;
@@ -113,7 +117,7 @@ CREATE DATABASE dourek OWNER dourek;
 cd backend
 mvn spring-boot:run
 ```
-Les tables sont créées automatiquement. Au premier lancement, des données de démonstration sont insérées : 10 établissements à l'Ariana (dont un café et un salon de thé créés avec la catégorie « Autres »), des tickets et un historique.
+Les tables sont créées automatiquement. Au premier lancement, des données de démonstration sont insérées : 11 établissements à l'Ariana (dont deux cafés et un salon de thé créés avec la catégorie « Autres »), des tickets et un historique.
 
 ### 3.2 Front-end (port 4200)
 ```bash
@@ -132,6 +136,8 @@ Pour tester depuis un téléphone sur le même Wi-Fi, ouvrir `http://<IP-du-PC>:
 | Employé (Poste 2, Salon Karim) | `sami@dourek.tn` | `dourek123` |
 | Gérant (Labo El Menzah) | `labo@dourek.tn` | `dourek123` |
 | Client (Yassine Trabelsi) | `client@dourek.tn` | `dourek123` |
+
+Ces comptes se saisissent à la main sur la page de connexion (client) ou sur « Espace pro » (gérant, employé) : il n'y a pas de bouton de remplissage automatique.
 
 > Base PostgreSQL créée par une version précédente : la supprimer et la recréer (`DROP DATABASE dourek; CREATE DATABASE dourek;`), car un client n'a pas d'établissement (colonne désormais facultative).
 
@@ -220,10 +226,11 @@ frontend/  application Angular
 cd backend
 mvn test
 ```
-28 tests, sans base de données ni clé d'IA :
-- **recherche avec l'IA** : ce que notre code contrôle (identifiants inventés par le modèle ignorés, distance, attente et heure appliquées, files en pause jamais choisies, priorité du client) et le mode sans IA (« coiffure », « je veux boire quelque chose », « à moins de 3,5 km ») ;
+37 tests, sans base de données ni clé d'IA :
+- **recherche avec l'IA** : ce que notre code contrôle (identifiants inventés par le modèle ignorés, distance, attente et heure appliquées, files en pause jamais choisies, priorité du client), la liste complétée quand le modèle oublie un établissement d'un type, et le mode sans IA (« coiffure », « je veux boire quelque chose », « à moins de 3,5 km », « caffe ») ;
 - **formulaire par IA** : contrôle de la proposition du modèle (types, options, doublons, longueurs) et règles du mode sans IA ;
-- **recherche normale** : catégories devinées depuis le texte (« coiffure », « coupe femme », « prise de sang »…), mots utiles ;
+- **recherche normale** : catégories devinées depuis le texte (« coiffure », « coupe femme », « prise de sang »…), mots utiles, fautes de frappe corrigées sans toucher aux vrais mots ;
+- **mes tickets** : ordre d'affichage (ticket appelé, puis la plus courte attente, puis les anciens) ;
 - **Gemini** : ordre des modèles de secours (flash-lite, puis flash, version stable la plus récente) et erreurs qui ne changent pas de modèle (clé refusée, schéma refusé).
 
 ### Parcours testés (Playwright, Chrome)
@@ -243,8 +250,11 @@ mvn test
 | Recherche avec l'IA, vraie clé : « je veux me raser la barbe vers Ennasr, pas trop cher » | Critères compris (se raser, Ennasr, petit prix), Barber Ennasr avec une explication |
 | Modèle Gemini surchargé (503) ou retiré (404) | Le serveur passe au modèle suivant sans erreur pour le visiteur |
 | IA Gemini (faux serveur de test) : modèle inconnu, schéma refusé, mauvaise clé | Autre modèle choisi, nouvel essai en JSON simple, puis repli en mode local |
-| Client non connecté qui ouvre « Mon ticket » ou une fiche | Renvoi à la connexion, puis retour à la page demandée |
-| Jeton expiré ou compte disparu (base de démo relancée) | Session fermée, renvoi à la connexion, pages publiques toujours lisibles |
+| Ouverture du site sans compte (accueil, établissements, fiche, « Mes tickets ») | Page de connexion, sans onglet Accueil ni Établissements ; après connexion, retour à la page demandée |
+| Connexion d'un client sans ticket, puis prise d'un ticket au labo et d'un autre au café | Accueil : « Vous n'avez pas de ticket en cours », puis le ticket du labo, puis celui du café en premier (il passe plus tôt) ; le clic ouvre Mes tickets dans le même ordre |
+| Nouvel onglet, déconnexion, compte pro sur l'accueil | Nouvel onglet et déconnexion : page de connexion ; un pro voit une carte « Espace pro » à la place du ticket |
+| Recherche « caffe » (faute de frappe) | Normale : les 2 cafés. Avec l'IA, vraie clé Gemini (14/11/2026, 13 essais dont « un caffe pas cher » et « kahwa ») : les 2 cafés et le salon de thé à chaque fois, y compris les 6 fois où le modèle n'en citait que 2 |
+| Jeton expiré ou compte disparu (base de démo relancée) | Session fermée, renvoi à la page de connexion (client ou pro) |
 | Carte agrandie sur la recherche, la fiche et l'inscription pro | Elle occupe toute la fenêtre, Échap la referme |
 | Toutes les pages à 390 px (mobile) et 1440 px (bureau) | Aucun débordement horizontal |
 
@@ -294,3 +304,4 @@ Chaque fonctionnalité a été développée sur sa propre branche, puis fusionn�
 | `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
 | `fix/recherche-localisation` | Recherche affichée même sans réponse à la demande de localisation |
 | `feat/recherche-ia-intelligente` | Deux boutons de recherche (normale, avec l'IA), IA qui choisit parmi les établissements inscrits, choix de l'assistant |
+| `feat/connexion-d-abord` | Connexion obligatoire avant le site, vrai ticket sur l'accueil, page Mes tickets, fautes de frappe corrigées, liste d'un type toujours complète avec l'IA |
