@@ -1,18 +1,37 @@
 <div class="container page">
   @if (erreur()) {
     <div class="card vide"><h2>{{ erreur() }}</h2><a class="btn" routerLink="/etablissements">Prendre un nouveau ticket</a></div>
-  } @else if (!code() && historique(); as h) {
-    <div class="card vide">
-      <app-icon name="ticket" [size]="40" />
-      <h2>Vous n’avez pas de ticket en cours</h2>
-      <p class="muted">Choisissez un établissement et prenez votre ticket à distance.</p>
-      <a class="btn lg" routerLink="/etablissements">Trouver un établissement</a>
-    </div>
-    @if (h.length) {
+  } @else if (!code() && historique()) {
+    @if (actifs().length) {
+      <section class="card historique encours">
+        <h2>Mes tickets en cours</h2>
+        <p class="small muted">Celui qui passe le plus tôt est en premier.</p>
+        <ul>
+          @for (x of actifs(); track x.code; let premier = $first) {
+            <li>
+              <a [routerLink]="['/ticket', x.code]" [class.premier]="premier">
+                <b class="num">{{ x.numero }}</b>
+                <span class="grow">{{ x.etablissementNom }} · {{ x.prestation }}
+                  <span class="small muted bloc">{{ x.statut === 'APPELE' ? 'Présentez-vous maintenant' : x.personnesAvant + (x.personnesAvant > 1 ? ' personnes' : ' personne') + ' avant vous · passage vers ' + heure(x.passageEstime) }}</span></span>
+                <span class="badge" [class.accent]="x.statut === 'APPELE'" [class.ok]="x.statut !== 'APPELE'">{{ x.statut === 'APPELE' ? 'C’est votre tour' : '~' + x.attenteMinutes + ' min' }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </section>
+    } @else {
+      <div class="card vide">
+        <app-icon name="ticket" [size]="40" />
+        <h2>Vous n’avez pas de ticket en cours</h2>
+        <p class="muted">Choisissez un établissement et prenez votre ticket à distance.</p>
+        <a class="btn lg" routerLink="/etablissements">Trouver un établissement</a>
+      </div>
+    }
+    @if (anciens().length) {
       <section class="card historique">
         <h2>Mes derniers tickets</h2>
         <ul>
-          @for (x of h; track x.code) {
+          @for (x of anciens(); track x.code) {
             <li>
               <a [routerLink]="['/ticket', x.code]">
                 <b class="num">{{ x.numero }}</b>

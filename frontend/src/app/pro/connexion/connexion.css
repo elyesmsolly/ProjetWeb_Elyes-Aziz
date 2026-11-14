@@ -20,7 +20,6 @@
 .mdp { position: relative; }
 .mdp .input { padding-right: 48px; }
 .oeil { position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); border-radius: 8px; }
-.demo { align-self: center; }
 .lien { color: var(--primary); font-weight: 600; }
 .centre { text-align: center; }
 @media (hover: hover) { .tabs a:hover { color: var(--text); } .lien:hover { text-decoration: underline; text-underline-offset: 3px; } }

@@ -9,7 +9,6 @@ h1 { font-size: 28px; }
 .mdp .input { padding-right: 48px; }
 .oeil { position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; display: grid; place-items: center; color: var(--muted); border-radius: 8px; }
 .aide { margin-top: 6px; }
-.demo { align-self: center; }
 .centre { text-align: center; }
 .lien { color: var(--primary); font-weight: 600; }
 @media (hover: hover) { .tabs > a:not(.on):hover { color: var(--text); } .lien:hover { text-decoration: underline; text-underline-offset: 3px; } }

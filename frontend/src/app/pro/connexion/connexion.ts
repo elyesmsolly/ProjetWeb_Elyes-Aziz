@@ -29,11 +29,6 @@ export class Connexion {
     this.erreur.set(null);
   }
 
-  remplirDemo() {
-    this.email.set(this.role() === 'GERANT' ? 'karim@dourek.tn' : 'sami@dourek.tn');
-    this.motDePasse.set('dourek123');
-  }
-
   seConnecter() {
     if (this.envoi()) return;
     if (!this.email().trim() || !this.motDePasse()) { this.erreur.set('Saisissez votre e-mail et votre mot de passe.'); return; }
@@ -41,7 +36,7 @@ export class Connexion {
     this.api.connexion(this.email().trim(), this.motDePasse()).subscribe({
       next: (s) => {
         if (s.role === 'CLIENT') {
-          this.erreur.set('Ce compte est un compte client : connectez-vous depuis « Se connecter » en haut de la page.');
+          this.erreur.set('Ce compte est un compte client : connectez-vous depuis la page « Se connecter ».');
           this.envoi.set(false);
           return;
         }

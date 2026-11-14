@@ -13,6 +13,7 @@ import { Carte } from '../../shared/carte';
 import { Icon } from '../../shared/icon';
 
 const SEUIL_ALERTE_MIN = 15;
+const enCours = (t: TicketVue) => t.statut === 'EN_ATTENTE' || t.statut === 'APPELE';
 
 @Component({
   selector: 'app-ticket',
@@ -44,6 +45,8 @@ export class Ticket {
   protected readonly flash = signal(false);
 
   protected readonly heure = heure;
+  protected readonly actifs = computed(() => (this.historique() ?? []).filter(enCours));
+  protected readonly anciens = computed(() => (this.historique() ?? []).filter((x) => !enCours(x)));
   protected readonly bientot = computed(() => {
     const t = this.t();
     return !!t && t.statut === 'EN_ATTENTE' && this.alerte15() && t.attenteMinutes <= SEUIL_ALERTE_MIN;
@@ -67,11 +70,12 @@ export class Ticket {
     effect(() => {
       const code = this.code();
       if (code) { this.charger(code); return; }
-      // « Mon ticket » sans code : on ouvre le ticket en cours du compte, sinon on montre l'historique.
+      // « Mes tickets » sans code : un seul ticket en cours, on l'ouvre directement ; sinon on montre la liste
+      // (tickets en cours d'abord, celui qui passe le plus tôt en premier : c'est l'ordre donné par l'API).
       this.api.mesTickets().subscribe({
         next: (liste) => {
-          const actif = liste.find((x) => x.statut === 'EN_ATTENTE' || x.statut === 'APPELE');
-          if (actif) this.router.navigate(['/ticket', actif.code], { replaceUrl: true });
+          const actifs = liste.filter(enCours);
+          if (actifs.length === 1) this.router.navigate(['/ticket', actifs[0].code], { replaceUrl: true });
           else this.historique.set(liste);
         },
         error: (e) => this.erreur.set(messageErreur(e)),

@@ -37,7 +37,6 @@
       <button class="btn lg block" type="submit" [disabled]="envoi()">
         {{ role() === 'GERANT' ? 'Accéder à mon tableau de bord' : 'Ouvrir l’écran de mon poste' }} <app-icon name="arrow" />
       </button>
-      <button type="button" class="btn link small demo" (click)="remplirDemo()">Remplir avec le compte de démonstration</button>
       <div class="divider"></div>
       <div class="small muted centre">Pas encore d’espace ? <a class="lien" routerLink="/pro/inscription">Créer mon établissement gratuitement</a></div>
     </form>

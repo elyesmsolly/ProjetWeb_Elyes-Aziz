@@ -9,10 +9,16 @@
 .mock { display: grid; place-items: center; }
 .phonecard { width: min(100%, 400px); padding: 36px; border-radius: 24px; text-align: center; box-shadow: 0 30px 60px -30px rgba(19,36,22,.5); display: flex; flex-direction: column; align-items: center; gap: 16px;
   animation: carte-in 700ms var(--ease-out) 120ms both; }
+.phonecard { transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) ease; }
 .phonecard b { color: #fff; }
-.phonecard .exemple { background: #22362a; color: var(--led-muted); letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
-.phonecard .progress { width: 100%; background: #22362a; }
-.phonecard .progress > span { background: var(--accent); }
+.phonecard .etiquette { background: #22362a; color: var(--led-muted); letter-spacing: .04em; text-transform: uppercase; font-size: 11px; }
+.phonecard .titre { font-family: var(--font-display); font-size: 22px; line-height: 1.25; }
+.phonecard .rond { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: #22362a; color: var(--accent); }
+.phonecard .voir { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; color: #fff; margin-top: 4px; }
+.autres { list-style: none; width: 100%; border-top: 1px solid #22362a; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; text-align: left; }
+.autres li { display: flex; align-items: center; gap: 10px; }
+.autres .nom { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (hover: hover) { .phonecard:hover { transform: translateY(-3px); } .phonecard:hover .voir { text-decoration: underline; text-underline-offset: 3px; } }
 .bignum { font-size: clamp(88px, 11vw, 120px); }
 @keyframes carte-in { from { opacity: 0; transform: translateY(16px) rotate(-1.5deg); } }
 
@@ -38,5 +44,5 @@ section { margin-top: 56px; }
   .cats { grid-template-columns: repeat(2, 1fr); }
   .near { grid-template-columns: 1fr; }
   .cta { flex-direction: column; align-items: flex-start; padding: 28px 24px; }
-  .mock { display: none; }
+  .phonecard { padding: 28px 22px; }
 }

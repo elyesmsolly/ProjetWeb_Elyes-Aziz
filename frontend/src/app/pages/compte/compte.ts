@@ -29,11 +29,6 @@ export class Compte {
   protected readonly erreur = signal<string | null>(null);
   protected readonly envoi = signal(false);
 
-  remplirDemo() {
-    this.email.set('client@dourek.tn');
-    this.motDePasse.set('dourek123');
-  }
-
   valider() {
     if (this.envoi()) return;
     this.erreur.set(null);
@@ -60,7 +55,7 @@ export class Compte {
         this.auth.ouvrir(s);
         const cible = this.retour();
         // Retour uniquement vers une page de Dourek (jamais vers un autre site).
-        this.router.navigateByUrl(cible && cible.startsWith('/') && !cible.startsWith('//') ? cible : '/ticket');
+        this.router.navigateByUrl(cible && cible.startsWith('/') && !cible.startsWith('//') ? cible : '/');
       },
       error: (e) => { this.erreur.set(messageErreur(e)); this.envoi.set(false); },
     });

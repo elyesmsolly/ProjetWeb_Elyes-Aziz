@@ -12,6 +12,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -158,11 +159,21 @@ public class FileService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ce ticket appartient à un autre compte");
     }
 
-    /** Tickets du client connecté, du plus récent au plus ancien. */
+    /**
+     * Tickets du client connecté : d'abord ceux en cours, celui qui passe le plus tôt en premier
+     * (un ticket appelé avant un ticket en attente, puis la plus courte attente), ensuite les anciens,
+     * du plus récent au plus ancien.
+     */
     @Transactional(readOnly = true)
     public List<TicketVue> mesTickets(String emailClient) {
-        return tickets.findTop20ByClientEmailOrderByCreeLeDesc(emailClient).stream().map(t -> vue(t.getCode())).toList();
+        return tickets.findTop20ByClientEmailOrderByCreeLeDesc(emailClient).stream().map(t -> vue(t.getCode()))
+                .sorted(ORDRE_MES_TICKETS).toList();
     }
+
+    static final Comparator<TicketVue> ORDRE_MES_TICKETS = Comparator
+            .comparingInt((TicketVue t) -> switch (t.statut()) { case "APPELE" -> 0; case "EN_ATTENTE" -> 1; default -> 2; })
+            .thenComparingInt(t -> "EN_ATTENTE".equals(t.statut()) ? t.attenteMinutes() : 0)
+            .thenComparing(TicketVue::creeLe, Comparator.nullsLast(Comparator.reverseOrder()));
 
     @Transactional(readOnly = true)
     public TicketVue vue(String code) {

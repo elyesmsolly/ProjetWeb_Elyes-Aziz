@@ -11,11 +11,14 @@ import { Icon } from './icon';
   template: `
   <header class="header">
     <div class="container bar">
-      <a class="logo" routerLink="/" title="Accueil"><span class="logo-mark" aria-hidden="true">D</span>Dourek</a>
+      <a class="logo" [routerLink]="auth.connecte() ? '/' : '/connexion'" title="Dourek"><span class="logo-mark" aria-hidden="true">D</span>Dourek</a>
       <nav class="nav" [class.open]="menu()" (click)="menu.set(false)">
-        <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
-        <a routerLink="/etablissements" routerLinkActive="on">Établissements</a>
-        @if (auth.client()) { <a routerLink="/ticket" routerLinkActive="on">Mon ticket</a> }
+        <!-- Sans compte, pas d'onglet vers le site : on se connecte d'abord. -->
+        @if (auth.connecte()) {
+          <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+          <a routerLink="/etablissements" routerLinkActive="on">Établissements</a>
+        }
+        @if (auth.client()) { <a routerLink="/ticket" routerLinkActive="on">Mes tickets</a> }
         <a routerLink="/pro" routerLinkActive="on">Espace pro</a>
         <div class="nav-actions">
           <span class="lang" title="La version arabe arrive bientôt">FR | ع</span>
@@ -67,6 +70,6 @@ export class Header {
   sortir() {
     this.auth.fermer();
     this.dernier.oublier();
-    this.router.navigateByUrl('/');
+    this.router.navigateByUrl('/connexion');
   }
 }
