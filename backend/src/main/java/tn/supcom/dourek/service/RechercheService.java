@@ -38,7 +38,9 @@ public class RechercheService {
     @Transactional(readOnly = true)
     public List<EtablissementResume> rechercher(String categorie, String texte, Double lat, Double lng) {
         double la = lat == null ? LAT_ARIANA : lat, lo = lng == null ? LNG_ARIANA : lng;
-        String q = normaliser(texte);
+        List<Etablissement> fiches = etablissements.findAll();
+        // « caffe » → « cafe », « coifure » → « coiffure » : un mot inconnu est remplacé par le mot connu le plus proche.
+        String q = corriger(normaliser(texte), vocabulaire(fiches.stream().map(RechercheService::texteFiche).toList()), Set.of());
         // « coiffure », « barbe », « analyse »… : on devine d'abord la ou les catégories (« coiffure » seul désigne
         // les barbiers ET la coiffure femme), puis on cherche les autres mots.
         boolean filtre = categorie != null && !categorie.isBlank();
@@ -50,7 +52,7 @@ public class RechercheService {
         else if (filtre) mots.removeIf(m -> categoriesDepuisTexte(m).stream().anyMatch(c -> c.name().equalsIgnoreCase(categorie)));
         List<Etablissement> retenus = new ArrayList<>();
         java.util.Map<Etablissement, Integer> points = new java.util.HashMap<>();
-        for (Etablissement e : etablissements.findAll()) {
+        for (Etablissement e : fiches) {
             if (filtre && !memeCategorie(e, categorie)) continue;
             if (!devinees.isEmpty() && !devinees.contains(e.getCategorie())) continue;
             retenus.add(e);
@@ -130,7 +132,7 @@ public class RechercheService {
             "veux", "voudrais", "cherche", "besoin", "faire", "tunis", "maintenant", "aujourd", "hui", "bon", "bien");
 
     /** Mots trop généraux pour départager les établissements une fois la catégorie connue. */
-    private static final java.util.Set<String> GENERIQUES = java.util.Set.of("homme", "hommes", "femme", "femmes", "salon");
+    static final java.util.Set<String> GENERIQUES = java.util.Set.of("homme", "hommes", "femme", "femmes", "dame", "dames", "salon", "salons");
 
     static List<String> motsUtiles(String q) {
         List<String> mots = new ArrayList<>();
@@ -143,14 +145,89 @@ public class RechercheService {
      * prestations). On compare aussi le début du mot (« coiffeur » trouve « coiffure »).
      */
     private static int motsTrouves(Etablissement e, List<String> mots) {
-        StringBuilder sb = new StringBuilder(e.getNom()).append(' ').append(e.libelleCategorie())
-                .append(' ').append(e.getQuartier()).append(' ').append(e.getAdresse());
-        e.getPrestations().forEach(p -> sb.append(' ').append(p.getNom()));
-        String cible = normaliser(sb.toString());
+        String cible = normaliser(texteFiche(e));
         int n = 0;
         for (String mot : mots)
             if (cible.contains(mot) || (mot.length() >= 5 && cible.contains(mot.substring(0, 5)))) n++;
         return n;
+    }
+
+    /** Le texte d'une fiche dans lequel on cherche : nom, type, quartier, adresse et prestations. */
+    private static String texteFiche(Etablissement e) {
+        StringBuilder sb = new StringBuilder(e.getNom()).append(' ').append(e.libelleCategorie())
+                .append(' ').append(e.getQuartier()).append(' ').append(e.getAdresse());
+        e.getPrestations().forEach(p -> sb.append(' ').append(p.getNom()));
+        return sb.toString();
+    }
+
+    // ------------------------------------------------------------------ fautes de frappe
+
+    /** Mots du métier connus même si aucune fiche ne les contient encore : ils servent à corriger les fautes de frappe. */
+    private static final Set<String> MOTS_METIER = Set.of("coiffure", "coiffeur", "coiffeuse", "coupe", "cheveux", "barbe", "barbier",
+            "rasage", "degrade", "brushing", "meches", "couleur", "lissage", "laboratoire", "analyse", "sang", "bilan",
+            "banque", "agence", "poste", "operateur", "telephone", "facture", "abonnement", "mairie", "municipalite",
+            "administration", "papier", "extrait", "legalisation", "signature", "cafe", "boire", "boisson", "soif",
+            "manger", "restaurant", "pizza", "sandwich", "pharmacie", "medecin", "docteur", "dentiste", "garage",
+            "pressing", "homme", "femme", "enfant", "salon");
+
+    /** Vrais mots français qui ressemblent à un mot du métier : ce ne sont pas des fautes de frappe. */
+    private static final Set<String> FAUX_AMIS = Set.of("fracture", "couple", "marie", "manque", "porte", "barre", "carte", "cadre", "pose", "sage");
+
+    private static final java.util.regex.Pattern MOT = java.util.regex.Pattern.compile("[a-z]{4,}");
+
+    /** Les mots connus : ceux du métier et ceux des fiches (noms, types, quartiers, prestations). */
+    static Set<String> vocabulaire(List<String> textes) {
+        Set<String> mots = new java.util.HashSet<>(MOTS_METIER);
+        for (String t : textes) for (String m : normaliser(t).split("[^a-z0-9]+")) if (m.length() >= 3) mots.add(m);
+        return mots;
+    }
+
+    /**
+     * Corrige les fautes de frappe d'un texte déjà normalisé : chaque mot inconnu (ni dans le vocabulaire, ni parmi
+     * les mots à garder, ni mot-clé d'une catégorie) est remplacé par le mot connu le plus proche, s'il y en a un.
+     * Le reste du texte (chiffres, ponctuation) ne bouge pas.
+     */
+    static String corriger(String texteNormalise, Set<String> vocabulaire, Set<String> aGarder) {
+        if (texteNormalise.isBlank()) return texteNormalise;
+        return MOT.matcher(texteNormalise).replaceAll(m -> plusProche(m.group(), vocabulaire, aGarder));
+    }
+
+    private static String plusProche(String mot, Set<String> vocabulaire, Set<String> aGarder) {
+        if (vocabulaire.contains(mot) || VIDES.contains(mot) || aGarder.contains(mot) || FAUX_AMIS.contains(racine(mot))
+                || !categoriesDepuisTexte(mot).isEmpty()) return mot;
+        // « coiffeur » trouve déjà « coiffure » par son début : ce n'est pas une faute.
+        if (mot.length() >= 5 && vocabulaire.stream().anyMatch(v -> v.length() >= 5 && v.startsWith(mot.substring(0, 5)))) return mot;
+        String racine = racine(mot), mieux = mot;
+        int ecart = 2;
+        for (String v : vocabulaire) {
+            if (v.length() < 4) continue;
+            String r = racine(v);
+            // Lettre doublée ou pluriel (« caffe », « cafes ») : toujours accepté. Une lettre fausse : mots de 5 lettres et plus.
+            int d = r.equals(racine) ? 0 : mot.length() >= 5 && v.length() >= 5 && uneLettrePres(racine, r) ? 1 : 2;
+            if (d < ecart || (d == ecart && d < 2 && v.compareTo(mieux) < 0)) { ecart = d; mieux = v; }
+        }
+        return mieux;
+    }
+
+    /** Forme simplifiée d'un mot pour le comparer : lettres doublées réduites (« caffe » → « cafe »), « s » ou « x » final retiré. */
+    static String racine(String mot) {
+        String r = mot.replaceAll("(.)\\1+", "$1");
+        return r.length() > 4 && (r.endsWith("s") || r.endsWith("x")) ? r.substring(0, r.length() - 1) : r;
+    }
+
+    /** Vrai si les deux mots diffèrent d'une seule lettre (remplacée, ajoutée ou oubliée) ou de deux lettres voisines inversées. */
+    static boolean uneLettrePres(String a, String b) {
+        if (a.equals(b)) return true;
+        if (Math.abs(a.length() - b.length()) > 1) return false;
+        if (a.length() > b.length()) { String t = a; a = b; b = t; }
+        int i = 0;
+        while (i < a.length() && a.charAt(i) == b.charAt(i)) i++;
+        if (a.length() == b.length()) {
+            if (a.substring(i + 1).equals(b.substring(i + 1))) return true;                        // une lettre remplacée
+            return i + 1 < a.length() && a.charAt(i) == b.charAt(i + 1) && a.charAt(i + 1) == b.charAt(i)
+                    && a.substring(i + 2).equals(b.substring(i + 2));                               // deux lettres inversées
+        }
+        return a.substring(i).equals(b.substring(i + 1));                                           // une lettre en plus ou en moins
     }
 
     public static String normaliser(String s) {

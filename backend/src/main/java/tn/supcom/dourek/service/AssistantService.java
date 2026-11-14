@@ -28,8 +28,9 @@ import tools.jackson.databind.JsonNode;
  * 1. le modèle lit la demande et la liste des établissements inscrits, puis renvoie en sortie structurée ceux
  *    qui répondent au besoin (« je veux boire quelque chose » → les cafés) et les contraintes chiffrées
  *    de la demande (distance, attente, heure, quartier, budget, et ce qui compte le plus pour le client) ;
- * 2. NOTRE code vérifie ces identifiants, applique les contraintes avec nos mesures et classe ; le premier
- *    établissement ouvert du classement est le choix de l'assistant ;
+ * 2. NOTRE code vérifie ces identifiants, complète la sélection quand la demande nomme un type entier
+ *    (« caffe » → tous les cafés, même si le modèle en a oublié un), applique les contraintes avec nos
+ *    mesures et classe ; le premier établissement ouvert du classement est le choix de l'assistant ;
  * 3. le modèle explique ce choix en une ou deux phrases.
  * Modèle utilisé : Claude si ANTHROPIC_API_KEY est définie, sinon Google Gemini (offre gratuite) si
  * GEMINI_API_KEY est définie, sinon des règles locales par mots-clés prennent le relais.
@@ -49,6 +50,8 @@ public class AssistantService {
     public record Comprehension(
             @JsonPropertyDescription("Besoin du client résumé en 1 à 4 mots (ex. « Coiffure », « Boire un café », « Prise de sang »)")
             String besoin,
+            @JsonPropertyDescription("Types de la liste (recopiés tels quels, ex. « Café ») dont TOUS les établissements répondent au besoin. Liste vide si le client vise un établissement précis ou seulement certains établissements d'un type.")
+            List<String> types,
             @JsonPropertyDescription("Identifiants de TOUS les établissements de la liste qui peuvent répondre au besoin. Liste vide si aucun ne convient.")
             List<Long> etablissements,
             @JsonPropertyDescription("Quartier ou ville demandé (ex. « Ennasr »), ou chaîne vide")
@@ -64,8 +67,11 @@ public class AssistantService {
             @JsonPropertyDescription("Ce qui compte le plus pour le client : ATTENTE (le plus vite), DISTANCE (le plus proche), NOTE (le mieux noté), PRIX (le moins cher), ou chaîne vide si rien n'est précisé")
             String priorite) {}
 
-    /** Demande comprise : les établissements qui répondent au besoin et les contraintes à appliquer. */
-    record Demande(Set<Long> ids, Criteres criteres) {}
+    /**
+     * Demande comprise : les établissements qui répondent au besoin et les contraintes à appliquer.
+     * typeSeul (analyse locale) : la demande ne contient que le nom d'un type de service (« caffe », « coiffure »).
+     */
+    record Demande(Set<Long> ids, Criteres criteres, boolean typeSeul) {}
 
     private final RechercheService recherche;
     private final ClaudeClient claude;
@@ -110,6 +116,7 @@ public class AssistantService {
             }
         }
         if (demande == null) demande = comprendreLocalement(req.message(), tous);
+        else demande = completer(demande, comprendreLocalement(req.message(), tous), tous);
 
         // 2. Filtrer et classer (notre code)
         Set<Long> ids = demande.ids();
@@ -219,7 +226,14 @@ public class AssistantService {
             de coiffure et les barbiers, pour hommes comme pour femmes ; « me raser » désigne les barbiers ; \
             « une analyse » désigne les laboratoires. Pour un besoin général, parcours la liste type par type et garde \
             chaque établissement des types concernés, sans en oublier. Si le client précise homme, femme ou enfant, ne garde que les \
-            établissements adaptés. S'il nomme un établissement, ne garde que celui-là. Si la demande n'exprime aucun \
+            établissements adaptés. S'il nomme un établissement, ne garde que celui-là. La demande peut contenir des \
+            fautes de frappe : comprends le mot voulu (« caffe » veut dire café, « coifure » coiffure). Un café se \
+            boit dans un café comme dans un salon de thé : une demande de café désigne ces deux types.
+
+            Dans « types », recopie tels quels les types de la liste dont TOUS les établissements répondent au \
+            besoin (« caffe » → Café et Salon de thé ; « coiffure » → Barbier et Coiffure femme) : Dourek ajoutera \
+            lui-même chaque établissement de ces types. Laisse « types » vide si le client vise un établissement \
+            précis, ou une prestation que seuls certains établissements du type proposent. Si la demande n'exprime aucun \
             besoin précis (« le plus proche », « ce qui est ouvert »), garde tous les établissements. Si aucun \
             établissement ne peut répondre au besoin, renvoie une liste vide : n'ajoute jamais un établissement sans rapport.
 
@@ -247,6 +261,8 @@ public class AssistantService {
             "type", "OBJECT",
             "properties", Map.of(
                     "besoin", Map.of("type", "STRING", "description", "Besoin du client résumé en 1 à 4 mots (ex. Coiffure, Boire un café, Prise de sang)"),
+                    "types", Map.of("type", "ARRAY", "items", Map.of("type", "STRING"),
+                            "description", "Types de la liste (recopiés tels quels, ex. Café) dont TOUS les établissements répondent au besoin. Liste vide si le client vise un établissement précis ou seulement certains établissements d'un type."),
                     "etablissements", Map.of("type", "ARRAY", "items", Map.of("type", "INTEGER"),
                             "description", "Identifiants de TOUS les établissements de la liste qui peuvent répondre au besoin. Liste vide si aucun ne convient."),
                     "quartier", Map.of("type", "STRING", "description", "Quartier ou ville demandé (ex. Ennasr), ou chaîne vide"),
@@ -255,8 +271,8 @@ public class AssistantService {
                     "avantHeure", Map.of("type", "INTEGER", "description", "Heure limite de passage sur 24 h (18 pour « avant 18 h »), ou 0 si aucune"),
                     "petitPrix", Map.of("type", "BOOLEAN", "description", "true si le client veut payer peu cher"),
                     "priorite", Map.of("type", "STRING", "description", "Ce qui compte le plus pour le client : ATTENTE (le plus vite), DISTANCE (le plus proche), NOTE (le mieux noté), PRIX (le moins cher), ou chaîne vide si rien n'est précisé")),
-            "required", List.of("besoin", "etablissements", "quartier", "distanceMaxKm", "attenteMax", "avantHeure", "petitPrix", "priorite"),
-            "propertyOrdering", List.of("besoin", "etablissements", "quartier", "distanceMaxKm", "attenteMax", "avantHeure", "petitPrix", "priorite"));
+            "required", List.of("besoin", "types", "etablissements", "quartier", "distanceMaxKm", "attenteMax", "avantHeure", "petitPrix", "priorite"),
+            "propertyOrdering", List.of("besoin", "types", "etablissements", "quartier", "distanceMaxKm", "attenteMax", "avantHeure", "petitPrix", "priorite"));
 
     /** Étape 1 : le modèle choisit les établissements qui répondent au besoin et recopie les contraintes. */
     private Demande comprendre(String source, String message, List<EtablissementResume> tous) {
@@ -265,9 +281,12 @@ public class AssistantService {
         if (!"gemini".equals(source))
             return depuisComprehension(demanderAClaude(CONSIGNE_COMPREHENSION, texte, Comprehension.class, 2000L), tous);
         JsonNode x = gemini.json(CONSIGNE_COMPREHENSION, texte, SCHEMA_COMPREHENSION);
+        log.debug("Assistant : réponse structurée de Gemini pour « {} » : {}", message, x);
         List<Long> ids = new ArrayList<>();
         for (JsonNode n : x.path("etablissements")) ids.add(n.asLong(-1));
-        return depuisComprehension(new Comprehension(x.path("besoin").asString(""), ids, x.path("quartier").asString(""),
+        List<String> types = new ArrayList<>();
+        for (JsonNode n : x.path("types")) types.add(n.asString(""));
+        return depuisComprehension(new Comprehension(x.path("besoin").asString(""), types, ids, x.path("quartier").asString(""),
                 x.path("distanceMaxKm").asDouble(0), x.path("attenteMax").asInt(0), x.path("avantHeure").asInt(0),
                 x.path("petitPrix").asBoolean(false), x.path("priorite").asString("")), tous);
     }
@@ -349,17 +368,53 @@ public class AssistantService {
         return s == null ? "" : s.replaceAll("[\\r\\n|]+", " ").trim();
     }
 
-    /** Contrôle de la réponse du modèle : identifiants inconnus ignorés, valeurs « 0 » ou vides lues comme « non précisé ». */
+    /**
+     * Contrôle de la réponse du modèle : identifiants inconnus ignorés, valeurs « 0 » ou vides lues comme « non précisé ».
+     * Un type cité par le modèle amène TOUS les établissements de ce type : c'est notre code qui les énumère.
+     */
     static Demande depuisComprehension(Comprehension c, List<EtablissementResume> tous) {
         Set<Long> connus = tous.stream().map(EtablissementResume::id).collect(Collectors.toSet());
         Set<Long> ids = new LinkedHashSet<>();
         if (c.etablissements() != null)
             for (Long id : c.etablissements()) if (id != null && connus.contains(id)) ids.add(id);
+        if (c.types() != null) {
+            Set<String> types = c.types().stream().map(AssistantService::cleDeType).filter(t -> !t.isBlank()).collect(Collectors.toSet());
+            tous.stream().filter(e -> types.contains(cleDeType(e.categorieLibelle()))).forEach(e -> ids.add(e.id()));
+        }
+        return completerDemande(ids, c);
+    }
+
+    private static Demande completerDemande(Set<Long> ids, Comprehension c) {
         return new Demande(ids, new Criteres(majuscule(vide(c.besoin())), null, vide(c.quartier()),
                 c.avantHeure() > 0 && c.avantHeure() <= 24 ? c.avantHeure() : null,
                 c.attenteMax() > 0 ? c.attenteMax() : null,
                 c.distanceMaxKm() > 0 ? c.distanceMaxKm() : null,
-                c.petitPrix(), priorite(c.priorite())));
+                c.petitPrix(), priorite(c.priorite())), false);
+    }
+
+    /** Un type comparé sans accents, majuscules ni pluriel : le modèle peut écrire « Barbier » pour « Barbiers ». */
+    private static String cleDeType(String type) {
+        return java.util.Arrays.stream(RechercheService.normaliser(propre(type)).split("[^a-z0-9]+"))
+                .map(RechercheService::racine).collect(Collectors.joining(" ")).trim();
+    }
+
+    /**
+     * Filet de sécurité. Quand la demande ne contient que le nom d'un type de service (« caffe », « coiffure à moins
+     * de 3 km »), nos règles savent quels établissements y répondent. Si le modèle est d'accord avec elles (il a
+     * retenu au moins un de ces établissements, ou le besoin qu'il a compris désigne les mêmes), on ajoute ceux
+     * qu'il a oubliés : la liste d'un type est toujours complète. Sinon, on garde la sélection du modèle.
+     */
+    static Demande completer(Demande modele, Demande locale, List<EtablissementResume> tous) {
+        if (!locale.typeSeul()) return modele;
+        boolean accord = !java.util.Collections.disjoint(modele.ids(), locale.ids());
+        if (!accord && modele.criteres().besoin() != null) {
+            Set<Long> duBesoin = comprendreLocalement(modele.criteres().besoin(), tous).ids();
+            accord = duBesoin.size() < tous.size() && !java.util.Collections.disjoint(duBesoin, locale.ids());
+        }
+        if (!accord) return modele;
+        Set<Long> ids = new LinkedHashSet<>(modele.ids());
+        ids.addAll(locale.ids());
+        return new Demande(ids, modele.criteres(), false);
     }
 
     /** Priorité reconnue, ou null : toute autre valeur renvoyée par le modèle est ignorée. */
@@ -401,7 +456,7 @@ public class AssistantService {
 
     /** Besoins courants exprimés sans nommer le type d'établissement (« j'ai soif » → café). */
     private static final Map<String, List<String>> SYNONYMES = Map.of(
-            ".*(boire|soif|boisson|cafe|\\bthe\\b|\\bjus\\b|capucin|express).*", List.of("cafe", "the", "jus", "boisson", "buvette"),
+            ".*(boire|soif|boisson|caf+e|coffee|kahwa|9ahwa|qahwa|\\bthe\\b|\\bjus\\b|cappuc|capuc|express).*", List.of("cafe", "the", "jus", "boisson", "buvette"),
             ".*(manger|faim|dejeun|diner|repas|sandwich|pizza|restau).*", List.of("restaurant", "pizzeria", "sandwich", "snack", "fast"),
             ".*(medecin|docteur|malade|consultation|soigner).*", List.of("medecin", "docteur", "cabinet", "clinique"),
             ".*(\\bdents?\\b|dentiste|dentaire).*", List.of("dentiste", "dentaire"),
@@ -414,8 +469,11 @@ public class AssistantService {
      * cherche les mots du besoin, et quelques synonymes, dans le nom, le type et les prestations des fiches.
      */
     static Demande comprendreLocalement(String message, List<EtablissementResume> tous) {
-        String t = RechercheService.normaliser(message);
-        Set<Categorie> categories = RechercheService.categoriesDepuisTexte(message);
+        // Fautes de frappe : « caffe » → « cafe », « coifure » → « coiffure » (mots inconnus seulement).
+        Set<String> vocabulaire = RechercheService.vocabulaire(tous.stream()
+                .map(e -> e.nom() + " " + e.categorieLibelle() + " " + e.quartier() + " " + e.prestations().stream().map(PrestationDto::nom).collect(Collectors.joining(" "))).toList());
+        String t = RechercheService.corriger(RechercheService.normaliser(message), vocabulaire, HORS_BESOIN);
+        Set<Categorie> categories = RechercheService.categoriesDepuisTexte(t);
 
         String presta = null;
         if (t.contains("coupe") && t.contains("barbe")) presta = "Coupe + barbe";
@@ -441,6 +499,7 @@ public class AssistantService {
 
         Set<Long> ids = new LinkedHashSet<>();
         String besoin = null;
+        List<String> motsSeuls = motsSansSynonymes(t);
         if (!categories.isEmpty()) {
             besoin = categories.stream().map(Categorie::getLibelle).collect(Collectors.joining(" et "));
             tous.stream().filter(e -> categories.stream().anyMatch(c -> c.name().equals(e.categorie()))).forEach(e -> ids.add(e.id()));
@@ -453,13 +512,43 @@ public class AssistantService {
             List<String> types = trouves.stream().map(EtablissementResume::categorieLibelle).distinct().toList();
             if (!mots.isEmpty() && !types.isEmpty() && types.size() <= 3) besoin = String.join(" et ", types);
         }
-        return new Demande(ids, new Criteres(besoin, presta, quartier, avant, attenteMax, distanceMax, petitPrix, priorite));
+        // La demande ne contient que le nom d'un type (« caffe », « coiffure homme ») : ni établissement nommé, ni autre besoin.
+        boolean typeSeul = !motsSeuls.isEmpty() && !ids.isEmpty() && ids.size() < tous.size()
+                && motsSeuls.stream().allMatch(mot -> designeUnType(mot, tous))
+                && tous.stream().noneMatch(e -> estNomme(e, RechercheService.motsUtiles(t), tous));
+        return new Demande(ids, new Criteres(besoin, presta, quartier, avant, attenteMax, distanceMax, petitPrix, priorite), typeSeul);
+    }
+
+    /** Vrai si le mot désigne un type de service : mot-clé d'une catégorie, besoin courant (« boire ») ou mot d'un type inscrit. */
+    private static boolean designeUnType(String mot, List<EtablissementResume> tous) {
+        if (!RechercheService.categoriesDepuisTexte(mot).isEmpty() || RechercheService.GENERIQUES.contains(mot)) return true;
+        if (SYNONYMES.keySet().stream().anyMatch(mot::matches)) return true;
+        return tous.stream().anyMatch(e -> List.of(RechercheService.normaliser(e.categorieLibelle()).split("[^a-z0-9]+")).contains(mot));
+    }
+
+    /**
+     * Vrai si la demande reprend tous les mots du nom de l'établissement (« barber ennasr ») : le client vise celui-là.
+     * Un nom fait seulement de mots de type (un café appelé « Café ») ne compte pas.
+     */
+    private static boolean estNomme(EtablissementResume e, List<String> motsDemande, List<EtablissementResume> tous) {
+        List<String> nom = RechercheService.motsUtiles(RechercheService.normaliser(e.nom()));
+        return mots(nom, motsDemande) && nom.stream().anyMatch(mot -> !designeUnType(mot, tous));
+    }
+
+    private static boolean mots(List<String> nom, List<String> motsDemande) {
+        return !nom.isEmpty() && motsDemande.containsAll(nom);
+    }
+
+    /** Mots qui décrivent le besoin : sans les contraintes, les chiffres ni les quartiers. */
+    static List<String> motsSansSynonymes(String texteNormalise) {
+        List<String> mots = new ArrayList<>(RechercheService.motsUtiles(texteNormalise));
+        mots.removeIf(mot -> HORS_BESOIN.contains(mot) || mot.matches("\\d+") || QUARTIERS.contains(mot));
+        return mots;
     }
 
     /** Mots qui décrivent le besoin, complétés par des synonymes (« boire » → café, thé, jus). */
     static List<String> motsDuBesoin(String texteNormalise) {
-        List<String> mots = new ArrayList<>(RechercheService.motsUtiles(texteNormalise));
-        mots.removeIf(mot -> HORS_BESOIN.contains(mot) || mot.matches("\\d+") || QUARTIERS.contains(mot));
+        List<String> mots = motsSansSynonymes(texteNormalise);
         if (mots.isEmpty()) return mots;
         SYNONYMES.forEach((motif, synonymes) -> { if (texteNormalise.matches(motif)) mots.addAll(synonymes); });
         return mots;

@@ -44,4 +44,45 @@ class RechercheServiceTest {
         assertThat(RechercheService.categoriesDepuisTexte("coiffure pour femme")).containsExactly(Categorie.COIFFURE_FEMME);
         assertThat(RechercheService.categoriesDepuisTexte("vêtements homme")).isEmpty();
     }
+
+    // ---- fautes de frappe
+
+    private static final java.util.Set<String> VOCABULAIRE = RechercheService.vocabulaire(java.util.List.of(
+            "Café des Jasmins Café Ariana Café express Thé à la menthe", "Salon Karim Barbiers Ariana Coupe homme Barbe", "Labo El Menzah Prise de sang"));
+
+    private static String corrige(String texte) {
+        return RechercheService.corriger(RechercheService.normaliser(texte), VOCABULAIRE, java.util.Set.of());
+    }
+
+    @Test
+    void corrigeLesFautesDeFrappe() {
+        assertThat(corrige("caffe")).isEqualTo("cafe");
+        assertThat(corrige("Caffé")).isEqualTo("cafe");
+        assertThat(corrige("cafes")).isEqualTo("cafe");
+        assertThat(corrige("coifure")).isEqualTo("coiffure");
+        assertThat(corrige("anlyse de sang")).isEqualTo("analyse de sang");
+        assertThat(corrige("sgnature")).isEqualTo("signature");
+        assertThat(corrige("un caffe à moins de 3.5 km")).isEqualTo("un cafe a moins de 3.5 km");
+    }
+
+    @Test
+    void neToucheNiAuxMotsConnusNiAuxMotsCourts() {
+        assertThat(corrige("coiffeur")).isEqualTo("coiffeur");
+        assertThat(corrige("barbir")).isEqualTo("barbir"); // déjà reconnu comme « barbier » par les mots-clés
+        assertThat(corrige("karim")).isEqualTo("karim");
+        assertThat(corrige("sans attente")).isEqualTo("sans attente");
+        assertThat(corrige("care")).isEqualTo("care");
+        assertThat(corrige("pizza")).isEqualTo("pizza");
+        assertThat(corrige("une fracture")).isEqualTo("une fracture"); // un vrai mot, pas « facture » mal écrit
+        assertThat(corrige("")).isEmpty();
+    }
+
+    @Test
+    void uneLettreDEcart() {
+        assertThat(RechercheService.uneLettrePres("barbir", "barbier")).isTrue();
+        assertThat(RechercheService.uneLettrePres("barbeir", "barbier")).isTrue();
+        assertThat(RechercheService.uneLettrePres("barbier", "barbier")).isTrue();
+        assertThat(RechercheService.uneLettrePres("garage", "barbier")).isFalse();
+        assertThat(RechercheService.uneLettrePres("fracas", "facture")).isFalse();
+    }
 }
