@@ -50,5 +50,11 @@
 .historique ul { list-style: none; }
 .historique a { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
 .historique li:last-child a { border-bottom: none; }
-.historique .num { font-family: var(--font-display); font-weight: 800; min-width: 56px; }
+.historique .num { font-family: var(--font-display); font-weight: 800; font-size: 18px; margin: 0; min-width: 56px; }
 .historique .grow { flex: 1; min-width: 0; }
+.historique .bloc { display: block; }
+.encours { margin-top: 0; }
+.encours h2 + p { margin-bottom: 8px; }
+.encours a { padding: 16px 0; }
+.encours .num { font-size: 24px; min-width: 72px; }
+.encours .premier .num { color: var(--accent); }

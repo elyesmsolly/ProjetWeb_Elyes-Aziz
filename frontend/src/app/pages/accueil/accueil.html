@@ -25,15 +25,49 @@
       </div>
     </div>
 
-    <div class="mock" aria-hidden="true">
-      <div class="phonecard led">
-        <span class="badge exemple">Exemple de ticket</span>
-        <div class="small muted">Chez Salon Karim</div>
-        <div class="led-num bignum">B‑24</div>
-        <span class="badge ok"><span class="dot live"></span>3 personnes avant vous</span>
-        <div class="progress"><span style="width:70%"></span></div>
-        <div class="small muted">Passage estimé vers <b>14 h 35</b></div>
-      </div>
+    <!-- L'espace « mes tickets » : le vrai ticket du compte connecté (jamais un exemple), ou « pas de ticket en cours ». -->
+    <div class="mock">
+      @if (auth.client()) {
+        <a class="phonecard led" routerLink="/ticket" title="Ouvrir mes tickets">
+          @if (enCours(); as liste) {
+            @if (liste[0]; as t) {
+              <span class="badge etiquette">{{ liste.length > 1 ? 'Votre prochain ticket' : 'Votre ticket en cours' }}</span>
+              <div class="small muted">Chez {{ t.etablissementNom }} · {{ t.prestation }}</div>
+              <div class="led-num bignum">{{ t.numero.replace('-', '‑') }}</div>
+              @if (t.statut === 'APPELE') {
+                <span class="badge accent">C’est votre tour</span>
+                <div class="small muted">Présentez-vous à <b>{{ t.poste?.split(' · ')[0] ?? 'l’accueil' }}</b> maintenant.</div>
+              } @else {
+                <span class="badge ok"><span class="dot live"></span>{{ t.personnesAvant === 0 ? 'Vous êtes le prochain' : t.personnesAvant + (t.personnesAvant > 1 ? ' personnes avant vous' : ' personne avant vous') }}</span>
+                <div class="small muted">Passage estimé vers <b>{{ fmt.heure(t.passageEstime) }}</b> (~{{ t.attenteMinutes }} min)</div>
+              }
+              @if (liste.length > 1) {
+                <ul class="autres">
+                  @for (x of liste.slice(1); track x.code) {
+                    <li><b>{{ x.numero }}</b><span class="nom">{{ x.etablissementNom }}</span><span>{{ x.statut === 'APPELE' ? 'Appelé' : '~' + x.attenteMinutes + ' min' }}</span></li>
+                  }
+                </ul>
+              }
+              <span class="voir">Voir {{ liste.length > 1 ? 'mes ' + liste.length + ' tickets' : 'mon ticket' }} <app-icon name="arrow" [size]="16" /></span>
+            } @else {
+              <span class="rond"><app-icon name="ticket" [size]="34" /></span>
+              <b class="titre">Vous n’avez pas de ticket en cours</b>
+              <div class="small muted">Choisissez un établissement et prenez votre ticket à distance : il s’affichera ici.</div>
+              <span class="voir">Voir mes tickets <app-icon name="arrow" [size]="16" /></span>
+            }
+          } @else {
+            <div class="small muted">Chargement de vos tickets…</div>
+          }
+        </a>
+      } @else {
+        <a class="phonecard led" [routerLink]="auth.gerant() ? '/pro/tableau-de-bord' : '/pro/employe'">
+          <span class="badge etiquette">Espace pro</span>
+          <span class="rond"><app-icon name="store" [size]="34" /></span>
+          <b class="titre">{{ auth.session()?.etablissementNom }}</b>
+          <div class="small muted">Vous êtes connecté avec un compte professionnel.</div>
+          <span class="voir">{{ auth.gerant() ? 'Ouvrir mon tableau de bord' : 'Ouvrir l’écran de mon poste' }} <app-icon name="arrow" [size]="16" /></span>
+        </a>
+      }
     </div>
   </section>
 
