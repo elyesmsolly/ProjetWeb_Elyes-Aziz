@@ -7,6 +7,26 @@ Le gérant crée sa file, compose le formulaire que remplit le client, et l'empl
 Projet Web, Objectif 3, SUP'COM 2026/2027 (encadrante : Dr. Maroua Nouioua).
 Réalisé par **Med Elyes Msolly** et **Med Aziz Ghazouani**.
 
+Livrable remis sous forme de ZIP. Comme le dépôt GitHub n'est pas joint, tout ce qui s'y trouve (branches, commits, répartition des tâches) est recopié dans ce README, section 6.
+
+### Ce que demande l'Objectif 3, et où le trouver
+
+| Exigence du sujet | Où |
+|---|---|
+| Site fonctionnel, 3 à 5 pages dynamiques au moins | Section 2.1 : 12 pages, toutes alimentées par l'API |
+| Front complet avec le framework choisi | Angular 22, sections 1 et 4 |
+| Back minimal ou simulation d'API | API Spring Boot réelle, section 4 (routes) |
+| Choix du framework | Section 1 |
+| Fonctionnalités développées | Section 2 |
+| Étapes de lancement | Section 3 (Windows et Linux/macOS) |
+| Navigation dynamique, responsive (mobile, tablette, bureau) | Sections 2.1 et 5.4 |
+| Formulaires dynamiques, filtres, notifications | Section 2 (inscription, recherche, formulaire du gérant, alertes du ticket) |
+| Gestion des données et des états | API REST + base de données, signals Angular, temps réel WebSocket |
+| Compatibilité Chrome, Firefox, Edge, Safari | Section 5.5 |
+| Performances, accessibilité, balises sémantiques | Section 5.3 (Lighthouse) |
+| Git : commits clairs, une branche par fonctionnalité, répartition des tâches | Section 6 |
+| Dépendances documentées | Section 4.2 |
+
 ---
 
 ## 1. Choix du framework
@@ -26,6 +46,25 @@ Tout tourne en local, sans déploiement.
 ---
 
 ## 2. Fonctionnalités réalisées
+
+### 2.1 Pages du site (toutes dynamiques)
+
+| Page | Adresse | Accès | Contenu chargé depuis l'API |
+|---|---|---|---|
+| Connexion client | `/connexion` | tous (page d'arrivée) | session JWT |
+| Création de compte client | `/inscription` | tous | création du compte |
+| Accueil | `/` | connecté | catégories, établissements proches, vrai ticket en cours |
+| Établissements (recherche, filtres, carte, IA) | `/etablissements` | connecté | liste, attente en direct, recherche avec l'IA |
+| Fiche d'un établissement | `/etablissements/:slug` | connecté | prestations, statistiques, formulaire du gérant |
+| Mes tickets | `/ticket` | client | tickets en cours et anciens |
+| Suivi d'un ticket | `/ticket/:code` | client propriétaire | position en direct (WebSocket) |
+| Connexion pro | `/pro/connexion` | tous | session gérant ou employé |
+| Inscription pro en 5 étapes | `/pro/inscription` | tous | création de l'établissement, adresse par la carte |
+| Tableau de bord | `/pro/tableau-de-bord` | gérant | indicateurs, file en direct |
+| Formulaire client | `/pro/formulaire` | gérant | constructeur, proposition par l'IA, versions |
+| Écran employé | `/pro/employe` | gérant ou employé | appel du suivant en direct |
+
+La navigation se fait par le menu (burger sur mobile) et les liens entre pages ; les pages protégées renvoient à la bonne connexion, puis à la page demandée.
 
 ### Côté client
 - **Connexion d'abord** : le site s'ouvre sur la page de connexion (`/connexion`, `/inscription` pour créer un compte).
@@ -98,6 +137,26 @@ Tout tourne en local, sans déploiement.
 - Java 21 et Maven 3.9 ou plus récent
 - Node.js 22 ou plus récent (et npm)
 - PostgreSQL 15 ou plus récent (facultatif grâce au profil `demo`)
+
+### Lancement rapide sous Windows (invite de commandes cmd)
+Après avoir décompressé le ZIP, ouvrir **deux** fenêtres cmd.
+
+Fenêtre 1, le back-end (adapter le chemin de Maven s'il n'est pas dans le `Path`) :
+```bat
+cd chemin\vers\ProjetWeb_Elyes-Aziz-main\backend
+C:\apache-maven-3.10.0\bin\mvn.cmd spring-boot:run -Dspring-boot.run.profiles=demo
+```
+Attendre la ligne « Started DourekApplication ». La ligne « IA de Dourek » indique si l'IA est active (API Gemini) ou en mode local.
+
+Fenêtre 2, le front-end :
+```bat
+cd chemin\vers\ProjetWeb_Elyes-Aziz-main\frontend
+npm install
+npm start
+```
+Puis ouvrir http://localhost:4200 : la page de connexion s'affiche. Comptes de test : section 3.3.
+
+Pour activer l'IA, poser le fichier `cle-ia.properties` (transmis à part, jamais dans le ZIP ni sur GitHub) dans le dossier `backend` **avant** de lancer le back-end. Sans ce fichier, tout fonctionne aussi, avec l'analyse locale par mots-clés.
 
 ### 3.1 Back-end (port 8080)
 
@@ -184,6 +243,8 @@ mvn spring-boot:run
 
 ## 4. Organisation du code
 
+### 4.1 Dossiers
+
 ```
 backend/   API Spring Boot (package tn.supcom.dourek)
   model/        entités JPA : Etablissement, Prestation, Formulaire, Ticket, Utilisateur
@@ -199,6 +260,24 @@ frontend/  application Angular
   src/app/pages/    accueil, recherche, établissement, ticket, compte client
   src/app/pro/      connexion, inscription, tableau de bord, formulaire, écran employé
 ```
+
+### 4.2 Dépendances
+
+| Côté | Dépendance | Rôle |
+|---|---|---|
+| Front | `@angular/core`, `common`, `router`, `forms`, `platform-browser` | Framework, routage, formulaires |
+| Front | `@angular/cdk` | Glisser-déposer du constructeur de formulaire |
+| Front | `@stomp/stompjs` | Temps réel (WebSocket STOMP) |
+| Front | `leaflet` | Carte OpenStreetMap |
+| Front | `rxjs` | Appels HTTP et flux temps réel |
+| Front (dev) | `@angular/cli`, `@angular/build`, `typescript`, `vitest`, `prettier` | Compilation, serveur de développement, tests, mise en forme |
+| Back | `spring-boot-starter-webmvc`, `-validation` | API REST et validation des données |
+| Back | `spring-boot-starter-data-jpa`, `postgresql`, `h2` | Base de données (PostgreSQL, ou H2 en mémoire pour la démo) |
+| Back | `spring-boot-starter-security`, `-oauth2-resource-server` | Rôles et jetons JWT |
+| Back | `spring-boot-starter-websocket` | Diffusion des changements de file |
+| Back | `anthropic-java` | SDK officiel de l'API Claude (facultatif) |
+| Back | appel REST direct (aucune bibliothèque) | Google Gemini et Nominatim |
+| Back (test) | `spring-boot-starter-test` (JUnit 5, AssertJ) | Tests automatiques |
 
 ### Principales routes de l'API
 | Méthode | Route | Accès |
@@ -221,7 +300,7 @@ frontend/  application Angular
 
 ## 5. Tests et qualité
 
-### Tests automatiques du back-end (JUnit)
+### 5.1 Tests automatiques du back-end (JUnit)
 ```bash
 cd backend
 mvn test
@@ -233,7 +312,7 @@ mvn test
 - **mes tickets** : ordre d'affichage (ticket appelé, puis la plus courte attente, puis les anciens) ;
 - **Gemini** : ordre des modèles de secours (flash-lite, puis flash, version stable la plus récente) et erreurs qui ne changent pas de modèle (clé refusée, schéma refusé).
 
-### Parcours testés (Playwright, Chrome)
+### 5.2 Parcours testés (Playwright, Chrome)
 | Scénario | Résultat |
 |---|---|
 | Un client prend un ticket chez Salon Karim, l'employé clique 6 fois sur « Appeler le suivant » | La page du client passe à « C'est votre tour ! » sans rechargement (WebSocket) |
@@ -258,7 +337,7 @@ mvn test
 | Carte agrandie sur la recherche, la fiche et l'inscription pro | Elle occupe toute la fenêtre, Échap la referme |
 | Toutes les pages à 390 px (mobile) et 1440 px (bureau) | Aucun débordement horizontal |
 
-### Audit Lighthouse (build de production, profil mobile)
+### 5.3 Audit Lighthouse (build de production, profil mobile)
 | Page | Performance | Accessibilité | Bonnes pratiques | SEO |
 |---|---|---|---|---|
 | Accueil | 94 | 100 | 100 | 100 |
@@ -273,35 +352,104 @@ Mesures appliquées :
 - **Performance :** pages chargées à la demande (lazy loading), 93 Ko compressés au premier chargement, polices hébergées localement en woff2, aucune image lourde (icônes SVG).
 - **Accessibilité :** balises sémantiques (`header`, `nav`, `main`, `footer`), contrastes vérifiés, libellés sur tous les champs, `aria-live` sur le ticket, navigation au clavier, `prefers-reduced-motion` respecté.
 
-### Navigateurs
+### 5.4 Responsive
+- Trois tailles vérifiées : mobile (390 px), tablette (768 px), bureau (1440 px). Aucun défilement horizontal.
+- Sous 900 px, le menu devient un bouton burger ; les grilles passent de 6 à 3 puis 2 colonnes ; la recherche et la carte s'empilent.
+- Écran employé et ticket pensés d'abord pour le téléphone (gros boutons, grand numéro).
+
+### 5.5 Navigateurs
 | Navigateur | Moteur | Résultat |
 |---|---|---|
 | Chrome | Chromium (Blink) | Toutes les pages, prise de ticket, appel en direct, glisser-déposer : OK |
 | Edge | Chromium (Blink), le même moteur que Chrome | OK par équivalence de moteur |
 | Safari | WebKit (testé avec WebKitGTK 2.52 et WebDriver) | Toutes les pages, prise de ticket et appel en direct par WebSocket : OK |
-| Firefox | Gecko | À vérifier à la main avant le rendu |
+| Firefox | Gecko | Testé à la main (14/11/2026) : connexion, recherche normale et avec l'IA, prise de ticket, suivi en direct : OK |
 
 Le test WebKit a révélé un bug, corrigé depuis : si le visiteur ne répondait pas à la demande de localisation, la liste de la recherche restait vide. Elle s'affiche maintenant tout de suite avec la position par défaut, puis se met à jour si la position arrive.
 
-### Suivi des tâches
-Les tâches sont suivies dans les [Issues GitHub](https://github.com/elyesmsolly/ProjetWeb_Elyes-Aziz/issues?q=is%3Aissue), une par fonctionnalité, avec le responsable et la branche.
+### 5.6 Suivi des tâches
+Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctionnalité, avec son responsable et sa branche. Leur contenu est recopié en section 6.2.
 
 ---
 
-## 6. Branches
+## 6. Git et travail en équipe
 
-Chaque fonctionnalité a été développée sur sa propre branche, puis fusionnée dans `main` :
+### 6.1 Méthode
+- Un dépôt GitHub partagé : `elyesmsolly/ProjetWeb_Elyes-Aziz`.
+- **Une branche par fonctionnalité** (`feature/...`, `feat/...`), par correction (`fix/...`) ou pour la documentation (`docs/...`), créée depuis `main`.
+- Commits courts et explicites, en français, qui disent ce qui change (« Suivi du ticket en temps réel », « Clé d'IA dans un fichier local ignoré par Git »).
+- Chaque branche est relue, testée (JUnit et parcours dans le navigateur), puis **fusionnée dans `main` avec un commit de fusion** (`git merge --no-ff`) : l'historique garde la trace de chaque fonctionnalité.
+- `main` reste toujours lançable. Les secrets (clé d'IA) ne sont jamais commités : `cle-ia.properties` est dans `.gitignore`.
+- Les commits ont été envoyés depuis le compte GitHub d'Elyes ; la répartition du travail est celle des tâches ci-dessous.
 
-| Branche | Contenu |
-|---|---|
-| `feature/backend-api` | API Spring Boot, base de données, sécurité, temps réel, assistant IA (back) |
-| `feature/frontend-base` | Thème (charte « Ton tour »), en-tête, services, routage |
-| `feature/recherche-etablissement` | Accueil, recherche, carte, assistant (front), page établissement |
-| `feature/ticket-temps-reel` | Prise de ticket et suivi en direct |
-| `feature/espace-pro-employe` | Connexion, tableau de bord, écran employé |
-| `feature/constructeur-formulaire` | Formulaire en glisser-déposer, inscription du gérant en 5 étapes |
-| `docs/readme` | Ce README |
-| `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
-| `fix/recherche-localisation` | Recherche affichée même sans réponse à la demande de localisation |
-| `feat/recherche-ia-intelligente` | Deux boutons de recherche (normale, avec l'IA), IA qui choisit parmi les établissements inscrits, choix de l'assistant |
-| `feat/connexion-d-abord` | Connexion obligatoire avant le site, vrai ticket sur l'accueil, page Mes tickets, fautes de frappe corrigées, liste d'un type toujours complète avec l'IA |
+### 6.2 Répartition des tâches (Issues GitHub)
+
+| Tâche | Responsable | Branche(s) |
+|---|---|---|
+| #1 API Spring Boot : file d'attente, tickets, JWT, WebSocket | Elyes (back-end) | `feature/backend-api` |
+| #2 Thème « Ton tour », en-tête et services Angular | Elyes et Aziz (intégration du design) | `feature/frontend-base` |
+| #3 Accueil, recherche avec filtres et carte, page établissement | Aziz (côté client) | `feature/recherche-etablissement` |
+| #4 Suivi du ticket en temps réel | Aziz (côté client) | `feature/ticket-temps-reel` |
+| #5 Espace pro : connexion, tableau de bord, écran employé | Elyes (côté gérant) | `feature/espace-pro-employe` |
+| #6 Constructeur de formulaire en glisser-déposer et inscription pro | Elyes (côté gérant) | `feature/constructeur-formulaire` |
+| #7 Assistant de recherche IA | Aziz (assistant IA) | `feature/backend-api`, `feature/recherche-etablissement` |
+| #8 README : framework, fonctionnalités, lancement | Elyes et Aziz | `docs/readme` |
+| #9 Tests : performance, accessibilité et multi-navigateurs | Elyes et Aziz | `feature/tests-qualite`, `fix/recherche-localisation` |
+| Améliorations après démonstration (compte client, IA Gemini, formulaire par IA, connexion d'abord) | Elyes et Aziz | branches 10 à 18 ci-dessous |
+
+### 6.3 Branches (dans l'ordre de fusion)
+
+| # | Branche | Contenu |
+|---|---|---|
+| 1 | `feature/backend-api` | API Spring Boot, base de données, sécurité, temps réel, assistant IA (back) |
+| 2 | `feature/frontend-base` | Thème (charte « Ton tour »), en-tête, services, routage |
+| 3 | `feature/recherche-etablissement` | Accueil, recherche, carte, assistant (front), page établissement |
+| 4 | `feature/ticket-temps-reel` | Prise de ticket et suivi en direct |
+| 5 | `feature/espace-pro-employe` | Connexion, tableau de bord, écran employé |
+| 6 | `feature/constructeur-formulaire` | Formulaire en glisser-déposer, inscription du gérant en 5 étapes |
+| 7 | `docs/readme` | Premier README |
+| 8 | `feature/tests-qualite` | Corrections d'accessibilité et section Tests |
+| 9 | `fix/recherche-localisation` | Recherche affichée même sans réponse à la demande de localisation |
+| 10 | `feature/compte-client` | Compte client, ticket réservé au client connecté |
+| 11 | `feature/assistant-gemini` | IA Google Gemini gratuite quand il n'y a pas de clé Claude |
+| 12 | `feature/cle-ia-fichier` | Clé d'IA lue dans un fichier local ignoré par Git |
+| 13 | `feature/formulaire-ia` | Formulaire client proposé par l'IA à partir d'une phrase du gérant |
+| 14 | `fix/verification-generale` | Corrections après une revue complète |
+| 15 | `fix/gemini-modele-disponible` | Modèle Gemini disponible choisi automatiquement |
+| 16 | `feat/recherche-ia-intelligente` | Deux boutons de recherche (normale, avec l'IA), choix de l'assistant |
+| 17 | `feat/connexion-d-abord` | Connexion obligatoire avant le site, vrai ticket sur l'accueil, fautes de frappe corrigées |
+| 18 | `docs/readme-complet` | Ce README complet (Git, pages, lancement Windows, Firefox) |
+
+### 6.4 Historique des commits (`git log`, hors commits de fusion)
+
+| Date | Branche | Commit |
+|---|---|---|
+| 2026-11-13 | `main` | Initialisation du projet : front Angular et README |
+| 2026-11-13 | `feature/backend-api` | API Spring Boot : file d'attente, tickets, formulaires versionnés, JWT, WebSocket, assistant |
+| 2026-11-13 | `feature/backend-api` | API : identifiant d'établissement dans la vue ticket, messages d'erreur et données de démo |
+| 2026-11-13 | `feature/frontend-base` | Front : thème « Ton tour », mise en page publique et services de base |
+| 2026-11-13 | `feature/recherche-etablissement` | Recherche et page établissement |
+| 2026-11-13 | `feature/ticket-temps-reel` | Suivi du ticket en temps réel |
+| 2026-11-13 | `feature/espace-pro-employe` | Espace pro : connexion, tableau de bord et écran employé |
+| 2026-11-13 | `feature/constructeur-formulaire` | Constructeur de formulaire en glisser-déposer et inscription pro |
+| 2026-11-13 | `docs/readme` | README : choix du framework, fonctionnalités, lancement et comptes de démo |
+| 2026-11-13 | `feature/tests-qualite` | Tests et qualité : corrections d'accessibilité et rapport Lighthouse |
+| 2026-11-13 | `fix/recherche-localisation` | Recherche : ne plus attendre la réponse à la demande de localisation |
+| 2026-11-13 | `feature/compte-client` | Compte client, ticket réservé au client connecté, recherche corrigée |
+| 2026-11-13 | `feature/compte-client` | README : compte client, adresse automatique, activation de l'IA |
+| 2026-11-13 | `feature/assistant-gemini` | Assistant : Google Gemini (offre gratuite) si pas de clé Claude |
+| 2026-11-13 | `feature/cle-ia-fichier` | Clé d'IA dans un fichier local ignoré par Git (cle-ia.properties) |
+| 2026-11-13 | `feature/formulaire-ia` | Formulaire client proposé par l'IA à partir d'une phrase du gérant |
+| 2026-11-13 | `fix/verification-generale` | Corrections après revue complète des derniers changements |
+| 2026-11-13 | `fix/verification-generale` | README : formulaire par IA, tests JUnit et scénarios vérifiés |
+| 2026-11-13 | `fix/gemini-modele-disponible` | Gemini : modèle flash-lite par défaut et bascule automatique vers un autre modèle |
+| 2026-11-13 | `feat/recherche-ia-intelligente` | Recherche avec l'IA : elle choisit parmi les établissements inscrits |
+| 2026-11-13 | `feat/recherche-ia-intelligente` | Deux boutons de recherche : normale ou avec l'IA |
+| 2026-11-13 | `feat/recherche-ia-intelligente` | README : recherche normale et recherche avec l'IA, 28 tests, essais avec le vrai Gemini |
+| 2026-11-14 | `feat/connexion-d-abord` | Connexion d'abord : le site s'ouvre sur la page de connexion |
+| 2026-11-14 | `feat/connexion-d-abord` | Accueil : le vrai ticket du compte connecté, page Mes tickets |
+| 2026-11-14 | `feat/connexion-d-abord` | Recherche : fautes de frappe corrigées, liste d'un type toujours complète avec l'IA |
+| 2026-11-14 | `feat/connexion-d-abord` | README : connexion d'abord, vrai ticket sur l'accueil, fautes de frappe, 37 tests |
+| 2026-11-14 | `docs/readme-complet` | README : pages, lancement sous Windows, dépendances, Firefox, Git et répartition des tâches |
+
+Chaque branche est ensuite fusionnée dans `main` par un commit « Fusion de *branche* dans main ».
