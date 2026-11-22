@@ -1,8 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { debounceTime, merge, switchMap } from 'rxjs';
+import { EMPTY, catchError, debounceTime, merge, switchMap } from 'rxjs';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { badgeAttente, distance, icone, note } from '../../core/format';
 import { AssistantReponse, Criteres, EtablissementResume } from '../../core/models';
@@ -14,15 +22,26 @@ import { Icon } from '../../shared/icon';
 type Tri = 'score' | 'attente' | 'distance' | 'note';
 
 /** Phrases d'exemple pour la recherche avec l'IA. */
-const EXEMPLES_IA = ['Je veux boire quelque chose', 'Une coiffure à moins de 3,5 km', 'Le barbier le mieux noté'];
+const EXEMPLES_IA = [
+  'Je veux boire quelque chose',
+  'Une coiffure à moins de 3,5 km',
+  'Le barbier le mieux noté',
+];
 
 const PRIORITES: Record<string, string> = {
-  ATTENTE: 'le plus rapide d’abord', DISTANCE: 'le plus proche d’abord', NOTE: 'le mieux noté d’abord', PRIX: 'le moins cher d’abord',
+  ATTENTE: 'le plus rapide d’abord',
+  DISTANCE: 'le plus proche d’abord',
+  NOTE: 'le mieux noté d’abord',
+  PRIX: 'le moins cher d’abord',
 };
 
 const CATEGORIES = [
-  { code: '', libelle: 'Tout' }, { code: 'BARBIER', libelle: 'Barbiers' }, { code: 'COIFFURE_FEMME', libelle: 'Coiffure femme' },
-  { code: 'LABORATOIRE', libelle: 'Laboratoires' }, { code: 'AGENCE', libelle: 'Agences' }, { code: 'ADMINISTRATION', libelle: 'Administrations' },
+  { code: '', libelle: 'Tout' },
+  { code: 'BARBIER', libelle: 'Barbiers' },
+  { code: 'COIFFURE_FEMME', libelle: 'Coiffure femme' },
+  { code: 'LABORATOIRE', libelle: 'Laboratoires' },
+  { code: 'AGENCE', libelle: 'Agences' },
+  { code: 'ADMINISTRATION', libelle: 'Administrations' },
 ];
 
 @Component({
@@ -67,32 +86,54 @@ export class Recherche implements OnInit {
   protected readonly resultats = computed(() => {
     const f = this.filtres();
     const garde = (e: EtablissementResume) =>
-      (!f.ouvert || e.fileOuverte) && (!f.attente20 || e.attenteMinutes < 20) && (!f.km1 || e.distanceKm < 1) && (!f.note4 || e.note >= 4);
+      (!f.ouvert || e.fileOuverte) &&
+      (!f.attente20 || e.attenteMinutes < 20) &&
+      (!f.km1 || e.distanceKm < 1) &&
+      (!f.note4 || e.note >= 4);
     // Après une recherche avec l'IA, la liste montre ses résultats, dans son ordre (files en pause à la fin).
     const ia = this.reponse();
-    if (ia) return [...ia.resultats.filter(garde), ...ia.resultats.filter((e) => f.ouvert && !e.fileOuverte)];
+    if (ia)
+      return [
+        ...ia.resultats.filter(garde),
+        ...ia.resultats.filter((e) => f.ouvert && !e.fileOuverte),
+      ];
     const liste = (this.tous() ?? []).filter(garde);
     const cle: Record<Tri, (e: EtablissementResume) => number> = {
-      score: (e) => e.score, attente: (e) => e.attenteMinutes, distance: (e) => e.distanceKm, note: (e) => -e.note,
+      score: (e) => e.score,
+      attente: (e) => e.attenteMinutes,
+      distance: (e) => e.distanceKm,
+      note: (e) => -e.note,
     };
     const fermes = (this.tous() ?? []).filter((e) => f.ouvert && !e.fileOuverte);
-    return [...liste.sort((a, b) => cle[this.tri()](a) - cle[this.tri()](b)), ...fermes.map((e) => ({ ...e, meilleurChoix: false }))];
+    return [
+      ...liste.sort((a, b) => cle[this.tri()](a) - cle[this.tri()](b)),
+      ...fermes.map((e) => ({ ...e, meilleurChoix: false })),
+    ];
   });
 
   protected readonly titre = computed(() => {
     const c = this.categories().find((x) => x.code === this.categorie());
-    const base = this.reponse() ? 'Résultats de l’assistant' : c && c.code ? c.libelle : this.texte() ? `« ${this.texte()} »` : 'Établissements';
+    const base = this.reponse()
+      ? 'Résultats de l’assistant'
+      : c && c.code
+        ? c.libelle
+        : this.texte()
+          ? `« ${this.texte()} »`
+          : 'Établissements';
     return `${base} près de l’Ariana`;
   });
 
-  protected readonly ouverts = computed(() => (this.reponse()?.resultats ?? this.tous() ?? []).filter((e) => e.fileOuverte).length);
+  protected readonly ouverts = computed(
+    () => (this.reponse()?.resultats ?? this.tous() ?? []).filter((e) => e.fileOuverte).length,
+  );
 
   /** Ce que l'assistant a compris, en petites étiquettes. */
   protected readonly compris = computed(() => {
     const c: Criteres | null | undefined = this.reponse()?.criteres;
     if (!c) return [];
     return [
-      c.besoin, c.quartier ? `à ${c.quartier}` : null,
+      c.besoin,
+      c.quartier ? `à ${c.quartier}` : null,
       c.distanceMaxKm ? `à moins de ${String(c.distanceMaxKm).replace('.', ',')} km` : null,
       c.attenteMax ? `${c.attenteMax} min d’attente au plus` : null,
       c.avantHeure ? `avant ${c.avantHeure} h` : null,
@@ -101,13 +142,19 @@ export class Recherche implements OnInit {
     ].filter((x): x is string => !!x);
   });
 
-  protected readonly reperes = computed<Repere[]>(() => this.resultats().map((e) => ({
-    id: e.id, lat: e.latitude, lng: e.longitude,
-    texte: e.fileOuverte ? `${e.attenteMinutes} min` : '—',
-    style: !e.fileOuverte ? 'off' : e.attenteMinutes > 30 ? 'hot' : '',
-  })));
+  protected readonly reperes = computed<Repere[]>(() =>
+    this.resultats().map((e) => ({
+      id: e.id,
+      lat: e.latitude,
+      lng: e.longitude,
+      texte: e.fileOuverte ? `${e.attenteMinutes} min` : '—',
+      style: !e.fileOuverte ? 'off' : e.attenteMinutes > 30 ? 'hot' : '',
+    })),
+  );
 
-  protected readonly choisi = computed(() => this.resultats().find((e) => e.id === this.selection()) ?? this.resultats()[0]);
+  protected readonly choisi = computed(
+    () => this.resultats().find((e) => e.id === this.selection()) ?? this.resultats()[0],
+  );
 
   ngOnInit() {
     const qp = this.route.snapshot.queryParamMap;
@@ -117,15 +164,23 @@ export class Recherche implements OnInit {
     this.api.categories().subscribe((cs) => {
       const libres = cs.filter((c) => c.libre).map((c) => ({ code: c.code, libelle: c.libelle }));
       const autres = cs.find((c) => c.code === 'AUTRE');
-      this.categories.set([...CATEGORIES, ...(autres?.nombre ? [{ code: 'AUTRE', libelle: 'Autres' }] : []), ...libres]);
+      this.categories.set([
+        ...CATEGORIES,
+        ...(autres?.nombre ? [{ code: 'AUTRE', libelle: 'Autres' }] : []),
+        ...libres,
+      ]);
     });
     // Liste affichée tout de suite (position par défaut), puis rechargée si le navigateur donne la position.
     this.charger();
-    this.position.demander().then((trouvee) => { if (trouvee) this.charger(); });
+    this.position.demander().then((trouvee) => {
+      if (trouvee) this.charger();
+    });
 
     const question = qp.get('assistant');
-    if (question) { this.saisie.set(question); this.demander(); }
-    else this.saisie.set(this.texte());
+    if (question) {
+      this.saisie.set(question);
+      this.demander();
+    } else this.saisie.set(this.texte());
   }
 
   /** Touche Entrée : on refait le dernier type de recherche utilisé. */
@@ -143,13 +198,21 @@ export class Recherche implements OnInit {
     this.reponse.set(null);
     this.categorie.set('');
     this.texte.set(q);
-    this.router.navigate([], { queryParams: { q: q || null, categorie: null, assistant: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    this.router.navigate([], {
+      queryParams: { q: q || null, categorie: null, assistant: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.charger();
   }
 
   charger() {
     this.api.rechercher(this.categorie(), this.texte()).subscribe({
-      next: (r) => { this.tous.set(r); this.erreur.set(null); this.ecouter(r); },
+      next: (r) => {
+        this.tous.set(r);
+        this.erreur.set(null);
+        this.ecouter(r);
+      },
       error: (e) => this.erreur.set(messageErreur(e)),
     });
   }
@@ -159,7 +222,13 @@ export class Recherche implements OnInit {
   private ecouter(liste: EtablissementResume[]) {
     this.ecoute?.unsubscribe();
     this.ecoute = merge(...liste.map((e) => this.tempsReel.file(e.id)))
-      .pipe(debounceTime(400), switchMap(() => this.api.rechercher(this.categorie(), this.texte())), takeUntilDestroyed(this.destroy))
+      .pipe(
+        debounceTime(400),
+        switchMap(() =>
+          this.api.rechercher(this.categorie(), this.texte()).pipe(catchError(() => EMPTY)),
+        ),
+        takeUntilDestroyed(this.destroy),
+      )
       .subscribe((r) => this.tous.set(r));
   }
 
@@ -172,7 +241,11 @@ export class Recherche implements OnInit {
     this.reponse.set(null);
     this.saisie.set('');
     this.mode.set('normal');
-    this.router.navigate([], { queryParams: { categorie: code || null, q: null, assistant: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    this.router.navigate([], {
+      queryParams: { categorie: code || null, q: null, assistant: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.charger();
   }
 
@@ -188,7 +261,11 @@ export class Recherche implements OnInit {
     const n = ++this.numero;
     this.mode.set('ia');
     this.reflechit.set(true);
-    this.router.navigate([], { queryParams: { assistant: q, q: null, categorie: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    this.router.navigate([], {
+      queryParams: { assistant: q, q: null, categorie: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.api.assistant(q).subscribe({
       next: (r) => {
         if (n !== this.numero) return;
@@ -200,7 +277,12 @@ export class Recherche implements OnInit {
       },
       error: (e) => {
         if (n !== this.numero) return;
-        this.reponse.set({ reponse: messageErreur(e), criteres: null, resultats: [], source: 'local' });
+        this.reponse.set({
+          reponse: messageErreur(e),
+          criteres: null,
+          resultats: [],
+          source: 'local',
+        });
         this.reflechit.set(false);
       },
     });
@@ -212,11 +294,19 @@ export class Recherche implements OnInit {
     this.rechercherNormal();
   }
 
-  ouvrir(slug: string) { this.router.navigate(['/etablissements', slug]); }
+  ouvrir(slug: string) {
+    this.router.navigate(['/etablissements', slug]);
+  }
 
-  choisirSurCarte(id: string | number) { this.selection.set(Number(id)); }
+  choisirSurCarte(id: string | number) {
+    this.selection.set(Number(id));
+  }
 
-  services(e: EtablissementResume) { return e.prestations.slice(0, 2); }
+  services(e: EtablissementResume) {
+    return e.prestations.slice(0, 2);
+  }
 
-  pluriel(n: number, mot: string) { return `${n} ${mot}${n > 1 ? 's' : ''}`; }
+  pluriel(n: number, mot: string) {
+    return `${n} ${mot}${n > 1 ? 's' : ''}`;
+  }
 }

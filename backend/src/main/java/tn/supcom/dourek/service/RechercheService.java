@@ -38,7 +38,7 @@ public class RechercheService {
     @Transactional(readOnly = true)
     public List<EtablissementResume> rechercher(String categorie, String texte, Double lat, Double lng) {
         double la = lat == null ? LAT_ARIANA : lat, lo = lng == null ? LNG_ARIANA : lng;
-        List<Etablissement> fiches = etablissements.findAll();
+        List<Etablissement> fiches = etablissements.findAll().stream().filter(e -> !e.isSuspendu()).toList();
         // « caffe » → « cafe », « coifure » → « coiffure » : un mot inconnu est remplacé par le mot connu le plus proche.
         String q = corriger(normaliser(texte), vocabulaire(fiches.stream().map(RechercheService::texteFiche).toList()), Set.of());
         // « coiffure », « barbe », « analyse »… : on devine d'abord la ou les catégories (« coiffure » seul désigne
@@ -76,7 +76,7 @@ public class RechercheService {
 
     @Transactional(readOnly = true)
     public EtablissementDetail detail(String slug, Double lat, Double lng) {
-        Etablissement e = etablissements.findBySlug(slug).orElseThrow(() -> Introuvable.de("Établissement"));
+        Etablissement e = etablissements.findBySlug(slug).filter(x -> !x.isSuspendu()).orElseThrow(() -> Introuvable.de("Établissement"));
         return new EtablissementDetail(
                 resume(e, lat == null ? LAT_ARIANA : lat, lng == null ? LNG_ARIANA : lng, false),
                 e.getDescription(), e.getHoraires(), e.getTelephone(), formulaires.actif(e.getId()));

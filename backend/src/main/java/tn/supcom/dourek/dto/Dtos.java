@@ -2,6 +2,9 @@ package tn.supcom.dourek.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,7 +29,8 @@ public final class Dtos {
 
     public record PublierFormulaireRequest(@NotNull @Size(min = 1, max = 30) List<@Valid ChampFormulaire> champs) {}
 
-    public record PrestationDto(Long id, @NotBlank String nom, String description, int dureeMinutes, double prix) {}
+    public record PrestationDto(Long id, @NotBlank @Size(max = 80) String nom, @Size(max = 200) String description,
+                                @Min(1) @Max(240) int dureeMinutes, @PositiveOrZero @Max(100000) double prix) {}
 
     public record EtablissementResume(
             Long id, String slug, String nom, String categorie, String categorieLibelle,
@@ -79,7 +83,7 @@ public final class Dtos {
             int absents, int ecartEstimeReelMinutes, List<AffluenceHeure> affluence, List<PosteEtat> postes,
             List<TicketLigne> derniers) {}
 
-    public record AjoutSurPlaceRequest(@NotBlank String nom, @NotNull Long prestationId, boolean prioritaire) {}
+    public record AjoutSurPlaceRequest(@NotBlank @Size(max = 120) String nom, @NotNull Long prestationId, boolean prioritaire) {}
 
     public record LoginRequest(@NotBlank String email, @NotBlank String motDePasse) {}
 

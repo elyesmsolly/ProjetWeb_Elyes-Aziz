@@ -16,16 +16,25 @@ export class AuthService {
   readonly connecte = computed(() => this.session() !== null);
   readonly gerant = computed(() => this.session()?.role === 'GERANT');
   readonly client = computed(() => this.session()?.role === 'CLIENT');
-  readonly pro = computed(() => this.connecte() && !this.client());
+  readonly admin = computed(() => this.session()?.role === 'ADMIN');
+  readonly pro = computed(() => this.connecte() && !this.client() && !this.admin());
 
   ouvrir(s: Session) {
     this.session.set(s);
-    try { sessionStorage.setItem(CLE, JSON.stringify(s)); } catch { /* navigation privée */ }
+    try {
+      sessionStorage.setItem(CLE, JSON.stringify(s));
+    } catch {
+      /* navigation privée */
+    }
   }
 
   fermer() {
     this.session.set(null);
-    try { sessionStorage.removeItem(CLE); } catch { /* rien */ }
+    try {
+      sessionStorage.removeItem(CLE);
+    } catch {
+      /* rien */
+    }
   }
 }
 
@@ -36,12 +45,16 @@ function lire(): Session | null {
     if (!s) return null;
     const exp = JSON.parse(atob(s.token.split('.')[1])).exp as number;
     return exp * 1000 > Date.now() ? s : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 /** Pages ouvertes sans compte : connexion et création de compte (client ou espace pro). */
 function sansCompte(url: string): boolean {
-  return ['/connexion', '/inscription', '/pro/connexion', '/pro/inscription'].some((p) => url.startsWith(p));
+  return ['/connexion', '/inscription', '/pro/connexion', '/pro/inscription', '/aide'].some((p) =>
+    url.startsWith(p),
+  );
 }
 
 /**
@@ -54,28 +67,41 @@ export const jetonInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = auth.session()?.token;
   if (!token || !req.url.startsWith('/api/') || req.url.startsWith('/api/auth/')) return next(req);
-  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })).pipe(catchError((e) => {
-    if (e?.status !== 401) return throwError(() => e);
-    if (auth.session()?.token === token) auth.fermer();
-    const url = router.url;
-    if (sansCompte(url)) { if (req.method === 'GET') return next(req); } // lecture publique : on la rejoue sans jeton
-    else if (url.startsWith('/pro')) router.navigate(['/pro/connexion']);
-    else router.navigate(['/connexion'], { queryParams: { retour: url === '/' ? null : url } });
-    return throwError(() => e);
-  }));
+  return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })).pipe(
+    catchError((e) => {
+      if (e?.status !== 401) return throwError(() => e);
+      if (auth.session()?.token === token) auth.fermer();
+      const url = router.url;
+      if (sansCompte(url)) {
+        if (req.method === 'GET') return next(req);
+      } // lecture publique : on la rejoue sans jeton
+      else if (/^\/(pro(\/|$|\?)|admin)/.test(url)) router.navigate(['/pro/connexion']);
+      else router.navigate(['/connexion'], { queryParams: { retour: url === '/' ? null : url } });
+      return throwError(() => e);
+    }),
+  );
 };
 
 /** Tout le site (accueil, établissements) demande une session : sans compte, on arrive sur la page de connexion. */
 export const sessionGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
-  return auth.connecte() ? true : inject(Router).createUrlTree(['/connexion'], { queryParams: { retour: state.url === '/' ? null : state.url } });
+  return auth.connecte()
+    ? true
+    : inject(Router).createUrlTree(['/connexion'], {
+        queryParams: { retour: state.url === '/' ? null : state.url },
+      });
 };
 
 /** Pages du client (ticket, suivi) : il faut être connecté avec un compte client. */
 export const clientGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
-  return auth.client() ? true : inject(Router).createUrlTree(['/connexion'], { queryParams: { retour: state.url } });
+  return auth.client()
+    ? true
+    : inject(Router).createUrlTree(['/connexion'], { queryParams: { retour: state.url } });
 };
+
+export const adminGuard: CanActivateFn = () =>
+  inject(AuthService).admin() ? true : inject(Router).createUrlTree(['/pro/connexion']);
 
 export const proGuard: CanActivateFn = () => {
   const auth = inject(AuthService);

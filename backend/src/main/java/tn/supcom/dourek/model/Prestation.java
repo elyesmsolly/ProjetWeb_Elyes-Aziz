@@ -20,7 +20,13 @@ public class Prestation {
     private int dureeMinutes;
     private double prix;
 
+    /** Un service supprimé est seulement retiré : les anciens tickets y font encore référence. */
+    private Boolean retiree;
+
     public Prestation() {}
+
+    public boolean isRetiree() { return Boolean.TRUE.equals(retiree); }
+    public void setRetiree(boolean retiree) { this.retiree = retiree; }
 
     public Prestation(String nom, String description, int dureeMinutes, double prix) {
         this.nom = nom;

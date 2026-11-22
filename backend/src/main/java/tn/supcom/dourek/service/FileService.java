@@ -108,10 +108,11 @@ public class FileService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Connectez-vous pour prendre un ticket"));
         Long id = etablissements.findBySlug(slug).orElseThrow(() -> Introuvable.de("Établissement")).getId();
         Etablissement e = etablissements.verrouiller(id).orElseThrow();
+        if (e.isSuspendu()) throw Introuvable.de("Établissement");
         if (!e.isFileOuverte()) throw Introuvable.conflit("La file de cet établissement est en pause");
 
         Prestation p = prestations.findById(req.prestationId())
-                .filter(x -> x.getEtablissement().getId().equals(e.getId()))
+                .filter(x -> !x.isRetiree() && x.getEtablissement().getId().equals(e.getId()))
                 .orElseThrow(() -> Introuvable.requete("Prestation inconnue"));
 
         Formulaire f = formulaires.findFirstByEtablissementIdOrderByVersionDesc(e.getId()).orElse(null);
@@ -275,7 +276,7 @@ public class FileService {
     public EtatFile ajouterSurPlace(Long etablissementId, AjoutSurPlaceRequest req) {
         Etablissement e = etablissements.verrouiller(etablissementId).orElseThrow();
         Prestation p = prestations.findById(req.prestationId())
-                .filter(x -> x.getEtablissement().getId().equals(e.getId()))
+                .filter(x -> !x.isRetiree() && x.getEtablissement().getId().equals(e.getId()))
                 .orElseThrow(() -> Introuvable.requete("Prestation inconnue"));
         Ticket t = nouveauTicket(e, p, Boolean.TRUE.equals(req.prioritaire()));
         t.setNomClient(req.nom().trim());

@@ -74,6 +74,9 @@ public class FormulaireService {
     }
 
     private void valider(List<ChampFormulaire> champs) {
+        for (String cle : List.of("nom", "telephone"))
+            if (champs.stream().noneMatch(c -> c.cle().equals(cle)))
+                throw Introuvable.requete("Le formulaire doit garder les champs nom et téléphone");
         Set<String> cles = new HashSet<>();
         for (ChampFormulaire c : champs) {
             if (!TYPES.contains(c.type())) throw Introuvable.requete("Type de champ inconnu : " + c.type());
@@ -89,6 +92,9 @@ public class FormulaireService {
         for (ChampFormulaire c : champs) {
             Object v = reponses.get(c.cle());
             boolean vide = v == null || v.toString().isBlank() || (c.type().equals("CASE") && !Boolean.TRUE.equals(v));
+            int max = c.cle().equals("nom") ? 120 : 500;
+            if (!vide && v.toString().length() > max)
+                throw Introuvable.requete("Le champ « " + c.label() + " » est trop long (" + max + " caractères au plus)");
             if (c.obligatoire() && vide)
                 throw Introuvable.requete("Le champ « " + c.label() + " » est obligatoire");
             if (!vide && c.type().equals("TELEPHONE") && !v.toString().replaceAll("[\\s.+-]", "").matches("\\d{8,12}"))

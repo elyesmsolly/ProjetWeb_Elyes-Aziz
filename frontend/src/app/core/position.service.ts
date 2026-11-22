@@ -16,12 +16,21 @@ export class PositionService {
       if (!('geolocation' in navigator)) return resolve(false);
       const abandon = setTimeout(() => resolve(false), 6000);
       navigator.geolocation.getCurrentPosition(
-        (p) => { clearTimeout(abandon); this.coords.set({ lat: p.coords.latitude, lng: p.coords.longitude }); resolve(true); },
-        () => { clearTimeout(abandon); resolve(false); },
+        (p) => {
+          clearTimeout(abandon);
+          this.coords.set({ lat: p.coords.latitude, lng: p.coords.longitude });
+          resolve(true);
+        },
+        () => {
+          clearTimeout(abandon);
+          resolve(false);
+        },
         { timeout: 4000, maximumAge: 300000 },
       );
     });
   }
 
-  actuelle() { return this.coords() ?? this.defaut; }
+  actuelle() {
+    return this.coords() ?? this.defaut;
+  }
 }

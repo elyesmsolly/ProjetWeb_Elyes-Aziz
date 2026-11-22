@@ -4,16 +4,18 @@ Plateforme de files d'attente virtuelles pour les petits commerces (barbiers, sa
 Le client trouve l'établissement qui a la plus courte attente, prend son ticket à distance et suit son tour en direct.
 Le gérant crée sa file, compose le formulaire que remplit le client, et l'employé appelle le suivant depuis son écran.
 
-Projet Web, Objectif 3, SUP'COM 2026/2027 (encadrante : Dr. Maroua Nouioua).
+Projet Web, Objectifs 3 et 4, SUP'COM 2026/2027 (encadrante : Dr. Maroua Nouioua).
 Réalisé par **Med Elyes Msolly** et **Med Aziz Ghazouani**.
 
 Livrable remis sous forme de ZIP. Comme le dépôt GitHub n'est pas joint, tout ce qui s'y trouve (branches, commits, répartition des tâches) est recopié dans ce README, section 6.
+
+> **Objectif 4 (finalisation et optimisation) : voir la section 7.**
 
 ### Ce que demande l'Objectif 3, et où le trouver
 
 | Exigence du sujet | Où |
 |---|---|
-| Site fonctionnel, 3 à 5 pages dynamiques au moins | Section 2.1 : 12 pages, toutes alimentées par l'API |
+| Site fonctionnel, 3 à 5 pages dynamiques au moins | Sections 2.1 et 7.1 : pages alimentées par l'API |
 | Front complet avec le framework choisi | Angular 22, sections 1 et 4 |
 | Back minimal ou simulation d'API | API Spring Boot réelle, section 4 (routes) |
 | Choix du framework | Section 1 |
@@ -195,10 +197,11 @@ Pour tester depuis un téléphone sur le même Wi-Fi, ouvrir `http://<IP-du-PC>:
 | Employé (Poste 2, Salon Karim) | `sami@dourek.tn` | `dourek123` |
 | Gérant (Labo El Menzah) | `labo@dourek.tn` | `dourek123` |
 | Client (Yassine Trabelsi) | `client@dourek.tn` | `dourek123` |
+| Administration (profil `demo` seulement) | `admin@dourek.tn` | `dourek123` |
 
 Ces comptes se saisissent à la main sur la page de connexion (client) ou sur « Espace pro » (gérant, employé) : il n'y a pas de bouton de remplissage automatique.
 
-> Base PostgreSQL créée par une version précédente : la supprimer et la recréer (`DROP DATABASE dourek; CREATE DATABASE dourek;`), car un client n'a pas d'établissement (colonne désormais facultative).
+> Base PostgreSQL créée par une version précédente (nouveau rôle ADMIN, nouvelles colonnes) : la supprimer et la recréer (`DROP DATABASE dourek; CREATE DATABASE dourek;`), car un client n'a pas d'établissement (colonne désormais facultative).
 
 Scénario conseillé :
 1. Ouvrir l'écran employé avec `sami@dourek.tn`.
@@ -214,7 +217,7 @@ Aucune clé n'est écrite dans le code.
 | `GEMINI_API_KEY` | Clé gratuite Google Gemini, utilisée s'il n'y a pas de clé Claude | (vide) |
 | `DOUREK_GEMINI_MODELE` | Modèle Gemini essayé en premier. S'il est surchargé, retiré ou hors quota, le serveur essaie tout seul les autres modèles « flash » et garde celui qui répond. | `gemini-flash-lite-latest` |
 | `DOUREK_ASSISTANT_MODELE` | Modèle Claude utilisé | `claude-opus-5-5` |
-| `DOUREK_JWT_SECRET` | Secret de signature des jetons | valeur de développement |
+| `DOUREK_JWT_SECRET` | Secret de signature des jetons | clé aléatoire à chaque démarrage |
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Connexion PostgreSQL | `jdbc:postgresql://localhost:5432/dourek`, `dourek`, `dourek` |
 
 **Activer l'IA (assistant de recherche et formulaire par IA).** L'IA est appelée par le serveur : il suffit de la configurer une fois sur la machine qui lance le back-end, et elle marche pour tous les visiteurs (ils ne voient jamais la clé). Ordre de choix :
@@ -258,7 +261,8 @@ frontend/  application Angular
   src/app/core/     modèles, services API, authentification, temps réel
   src/app/shared/   en-tête, carte, champ dynamique, constructeur de formulaire
   src/app/pages/    accueil, recherche, établissement, ticket, compte client
-  src/app/pro/      connexion, inscription, tableau de bord, formulaire, écran employé
+  src/app/pro/      connexion, inscription, tableau de bord, formulaire, écran employé, services, équipe, paramètres, QR code
+  src/app/admin/    établissements, utilisateurs et rôles, avis signalés, catégories, messages
 ```
 
 ### 4.2 Dépendances
@@ -269,6 +273,8 @@ frontend/  application Angular
 | Front | `@angular/cdk` | Glisser-déposer du constructeur de formulaire |
 | Front | `@stomp/stompjs` | Temps réel (WebSocket STOMP) |
 | Front | `leaflet` | Carte OpenStreetMap |
+| Front | `qrcode-generator` | QR code d’accueil, calculé dans le navigateur |
+| Front (dev) | `eslint`, `angular-eslint`, `typescript-eslint` | Analyse du code |
 | Front | `rxjs` | Appels HTTP et flux temps réel |
 | Front (dev) | `@angular/cli`, `@angular/build`, `typescript`, `vitest`, `prettier` | Compilation, serveur de développement, tests, mise en forme |
 | Back | `spring-boot-starter-webmvc`, `-validation` | API REST et validation des données |
@@ -305,11 +311,12 @@ frontend/  application Angular
 cd backend
 mvn test
 ```
-37 tests, sans base de données ni clé d'IA :
+40 tests, sans base de données ni clé d'IA :
 - **recherche avec l'IA** : ce que notre code contrôle (identifiants inventés par le modèle ignorés, distance, attente et heure appliquées, files en pause jamais choisies, priorité du client), la liste complétée quand le modèle oublie un établissement d'un type, et le mode sans IA (« coiffure », « je veux boire quelque chose », « à moins de 3,5 km », « caffe ») ;
 - **formulaire par IA** : contrôle de la proposition du modèle (types, options, doublons, longueurs) et règles du mode sans IA ;
 - **recherche normale** : catégories devinées depuis le texte (« coiffure », « coupe femme », « prise de sang »…), mots utiles, fautes de frappe corrigées sans toucher aux vrais mots ;
 - **mes tickets** : ordre d'affichage (ticket appelé, puis la plus courte attente, puis les anciens) ;
+- **avis** : moyenne recalculée, nom public abrégé ;
 - **Gemini** : ordre des modèles de secours (flash-lite, puis flash, version stable la plus récente) et erreurs qui ne changent pas de modèle (clé refusée, schéma refusé).
 
 ### 5.2 Parcours testés (Playwright, Chrome)
@@ -337,35 +344,39 @@ mvn test
 | Carte agrandie sur la recherche, la fiche et l'inscription pro | Elle occupe toute la fenêtre, Échap la referme |
 | Toutes les pages à 390 px (mobile) et 1440 px (bureau) | Aucun débordement horizontal |
 
-### 5.3 Audit Lighthouse (build de production, profil mobile)
-| Page | Performance | Accessibilité | Bonnes pratiques | SEO |
-|---|---|---|---|---|
-| Accueil | 94 | 100 | 100 | 100 |
-| Recherche | 88 | 100 | 96\* | 100 |
-| Établissement | 87 | 100 | 96\* | 100 |
-| Connexion pro | 95 | 100 | 100 | 100 |
-| Inscription pro | 91 | 100 | 100 | 100 |
+### 5.3 Audit Lighthouse (build de production, profil mobile, 22/11/2026)
 
-\* Seul point restant : les tuiles de la carte OpenStreetMap n'étaient pas joignables depuis l'environnement de test.
+Médiane de 3 passages, en local, avec le même protocole avant et après l'Objectif 4.
+
+| Page | Performance avant | Performance après | Accessibilité | Bonnes pratiques | SEO |
+|---|---|---|---|---|---|
+| Connexion | 96 | **99** | 100 → 100 | 100 | 100 |
+| Accueil | 84 | **96** | 100 → 100 | 100 | 100 |
+| Recherche | 75 | **95** | 100 → 100 | 100 | 100 |
+| Établissement | 81 | **93** | 100 → 100 | 100 | 100 |
+| Inscription pro | 90 | **99** | 98 → 100 | 100 | 100 |
+| Tableau de bord | 97 | **98** | 98 → 100 | 100 | 100 |
+
+Les scores de performance varient de quelques points d'une machine et d'un passage à l'autre.
 
 Mesures appliquées :
-- **Performance :** pages chargées à la demande (lazy loading), 93 Ko compressés au premier chargement, polices hébergées localement en woff2, aucune image lourde (icônes SVG).
-- **Accessibilité :** balises sémantiques (`header`, `nav`, `main`, `footer`), contrastes vérifiés, libellés sur tous les champs, `aria-live` sur le ticket, navigation au clavier, `prefers-reduced-motion` respecté.
+- **Performance :** pages et espace Administration chargés à la demande, cartes différées (`@defer`), polices woff2 locales préchargées, icônes SVG, 98 Ko compressés au premier chargement.
+- **Accessibilité :** un `h1` par page, repères `main`, lien d'évitement, menus fermés hors du parcours clavier, `prefers-reduced-motion` respecté.
 
 ### 5.4 Responsive
-- Trois tailles vérifiées : mobile (390 px), tablette (768 px), bureau (1440 px). Aucun défilement horizontal.
-- Sous 900 px, le menu devient un bouton burger ; les grilles passent de 6 à 3 puis 2 colonnes ; la recherche et la carte s'empilent.
-- Écran employé et ticket pensés d'abord pour le téléphone (gros boutons, grand numéro).
+- 30 écrans vérifiés automatiquement à 6 largeurs (320, 390, 768, 1024, 1280 et 1440 px) : aucun débordement horizontal.
+- Le menu devient un bouton burger sous 1120 px (900 px dans l'espace pro) ; grilles et formulaires passent en une colonne.
 
 ### 5.5 Navigateurs
+
+Parcours joués automatiquement avec Playwright le 22/11/2026 (compte, recherche, ticket, appel en direct, formulaire, et chaque page de l'Objectif 4).
+
 | Navigateur | Moteur | Résultat |
 |---|---|---|
-| Chrome | Chromium (Blink) | Toutes les pages, prise de ticket, appel en direct, glisser-déposer : OK |
-| Edge | Chromium (Blink), le même moteur que Chrome | OK par équivalence de moteur |
-| Safari | WebKit (testé avec WebKitGTK 2.52 et WebDriver) | Toutes les pages, prise de ticket et appel en direct par WebSocket : OK |
-| Firefox | Gecko | Testé à la main (14/11/2026) : connexion, recherche normale et avec l'IA, prise de ticket, suivi en direct : OK |
-
-Le test WebKit a révélé un bug, corrigé depuis : si le visiteur ne répondait pas à la demande de localisation, la liste de la recherche restait vide. Elle s'affiche maintenant tout de suite avec la position par défaut, puis se met à jour si la position arrive.
+| Chrome 157 | Blink | OK |
+| Edge 158 | Blink | OK |
+| Firefox 159 | Gecko | OK |
+| WebKit 27.2 (moteur de Safari, sous Windows) | WebKit | OK. Safari sur macOS ou iOS n'a pas été testé. |
 
 ### 5.6 Suivi des tâches
 Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctionnalité, avec son responsable et sa branche. Leur contenu est recopié en section 6.2.
@@ -453,3 +464,52 @@ Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctio
 | 2026-11-14 | `docs/readme-complet` | README : pages, lancement sous Windows, dépendances, Firefox, Git et répartition des tâches |
 
 Chaque branche est ensuite fusionnée dans `main` par un commit « Fusion de *branche* dans main ».
+
+---
+
+## 7. Objectif 4 : finalisation et optimisation
+
+### 7.1 Sitemap de l'Objectif 2
+
+| Branche | Pages ajoutées | Adresse |
+|---|---|---|
+| Client | Mon profil | `/profil` |
+| Client | Donner son avis | sur `/ticket/:code` une fois servi ; avis publics sur la fiche |
+| Aide | Aide, FAQ, Contact, Confidentialité | `/aide`, `/aide/faq`, `/aide/contact`, `/aide/confidentialite` |
+| Gérant | Services, Postes & employés | `/pro/services`, `/pro/equipe` |
+| Gérant | QR code d'accueil, Paramètres | `/pro/qr-code`, `/pro/parametres` |
+| Administration | Établissements, Utilisateurs & rôles | `/admin/etablissements`, `/admin/utilisateurs` |
+| Administration | Avis signalés, Catégories, Messages | `/admin/avis`, `/admin/categories`, `/admin/messages` |
+| Toutes | Page 404 | toute adresse inconnue |
+
+Reste à faire : la **version arabe** (sélecteur « FR | ع »), annoncée « bientôt » dans l'interface.
+
+### 7.2 Routes ajoutées à l'API
+
+| Méthode | Route | Accès |
+|---|---|---|
+| GET / PUT | `/api/client/profil` | client |
+| GET / POST | `/api/tickets/{code}/avis` | client propriétaire du ticket |
+| GET | `/api/etablissements/{slug}/avis` | public |
+| POST | `/api/avis/{id}/signaler` | connecté |
+| POST | `/api/contact` | public |
+| GET / POST / PUT / DELETE | `/api/pro/gerant/services`, `/equipe`, `/parametres` | gérant |
+| GET / PUT / DELETE | `/api/admin/...` | administrateur |
+
+### 7.3 Défauts corrigés
+- Prix décimaux arrondis à l'affichage (2,5 DT affiché 3 DT).
+- Champ « Où ? » de l'accueil ignoré par la recherche.
+- Mise à jour en direct arrêtée après une seule erreur réseau.
+- Erreur 500 sur un nom trop long, prix négatifs acceptés, formulaire publiable sans nom ni téléphone.
+- Débordements à 320 px, titres et repères de page manquants.
+- Alerte « bientôt votre tour » qui sonnait à chaque mouvement de la file.
+- Secret JWT par défaut lisible dans le code ; un compte retiré ou suspendu gardait sa session.
+
+### 7.4 Qualité du code
+```bash
+cd frontend
+npm run verifier   # Prettier, puis ESLint, puis build de production
+npm run format     # remet le code en forme
+```
+- Composants réutilisables dans `shared/` (en-têtes, états de chargement, confirmation, étoiles, champs, carte).
+- État commun des pages de données dans `core/ecran.ts` (chargement, erreur, action en cours).

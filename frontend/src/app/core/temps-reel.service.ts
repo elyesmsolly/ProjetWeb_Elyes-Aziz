@@ -2,7 +2,11 @@ import { Injectable, OnDestroy, signal } from '@angular/core';
 import { Client, StompSubscription } from '@stomp/stompjs';
 import { Observable } from 'rxjs';
 
-interface Abonnement { destination: string; rappel: () => void; sub?: StompSubscription; }
+interface Abonnement {
+  destination: string;
+  rappel: () => void;
+  sub?: StompSubscription;
+}
 
 /**
  * Temps réel (STOMP sur WebSocket). Le serveur envoie seulement « la file a changé » :
@@ -34,13 +38,20 @@ export class TempsReelService implements OnDestroy {
   /** Émet tout de suite, puis à chaque changement de la file et à chaque reconnexion. */
   file(etablissementId: number): Observable<void> {
     return new Observable<void>((obs) => {
-      const a: Abonnement = { destination: `/topic/etablissements/${etablissementId}`, rappel: () => obs.next() };
+      const a: Abonnement = {
+        destination: `/topic/etablissements/${etablissementId}`,
+        rappel: () => obs.next(),
+      };
       this.abonnements.add(a);
       if (this.client.connected) this.brancher(a);
       else obs.next();
       return () => {
         this.abonnements.delete(a);
-        try { a.sub?.unsubscribe(); } catch { /* connexion déjà fermée */ }
+        try {
+          a.sub?.unsubscribe();
+        } catch {
+          /* connexion déjà fermée */
+        }
       };
     });
   }
@@ -50,5 +61,7 @@ export class TempsReelService implements OnDestroy {
     a.rappel();
   }
 
-  ngOnDestroy() { this.client.deactivate(); }
+  ngOnDestroy() {
+    this.client.deactivate();
+  }
 }

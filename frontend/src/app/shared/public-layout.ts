@@ -7,6 +7,8 @@ import { Header } from './header';
   selector: 'app-public-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, Header, Footer],
-  template: `<app-header /><main><router-outlet /></main><app-footer />`,
+  template: `<app-header />
+    <main id="contenu" tabindex="-1"><router-outlet /></main>
+    <app-footer />`,
 })
 export class PublicLayout {}

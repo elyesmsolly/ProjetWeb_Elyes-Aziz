@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,7 +17,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import tn.supcom.dourek.repository.UtilisateurRepository;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -41,6 +49,8 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(a -> a
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/avis/**").authenticated()
                 .requestMatchers("/api/pro/gerant/**").hasRole("GERANT")
                 .requestMatchers("/api/pro/**").hasAnyRole("GERANT", "EMPLOYE")
                 // Tout ce qui concerne un ticket est réservé au client connecté.
@@ -63,6 +73,12 @@ public class SecurityConfig {
     @Bean
     SecretKey cleJwt(@Value("${dourek.jwt.secret}") String secret) throws NoSuchAlgorithmException {
         // SHA-256 du secret : toujours une clé de 256 bits, quelle que soit la longueur du secret.
+        if (secret.isBlank()) {
+            // Sans DOUREK_JWT_SECRET : clé aléatoire à chaque démarrage, jamais une clé lisible dans le code.
+            byte[] hasard = new byte[32];
+            new SecureRandom().nextBytes(hasard);
+            return new SecretKeySpec(hasard, "HmacSHA256");
+        }
         byte[] octets = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
         return new SecretKeySpec(octets, "HmacSHA256");
     }
@@ -73,8 +89,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey cle) {
-        return NimbusJwtDecoder.withSecretKey(cle).macAlgorithm(MacAlgorithm.HS256).build();
+    JwtDecoder jwtDecoder(SecretKey cle, UtilisateurRepository utilisateurs) {
+        NimbusJwtDecoder decodeur = NimbusJwtDecoder.withSecretKey(cle).macAlgorithm(MacAlgorithm.HS256).build();
+        // Un compte retiré, suspendu ou dont le rôle a changé perd sa session tout de suite.
+        OAuth2TokenValidator<Jwt> compteActif = jwt -> utilisateurs.findByEmailIgnoreCase(jwt.getSubject())
+                .filter(u -> !u.isSuspendu() && u.getRole().name().equals(jwt.getClaimAsString("role")))
+                .map(u -> OAuth2TokenValidatorResult.success())
+                .orElseGet(() -> OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Compte inactif", null)));
+        decodeur.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefault(), compteActif));
+        return decodeur;
     }
 
     @Bean

@@ -53,8 +53,14 @@ public class Etablissement {
 
     @OneToMany(mappedBy = "etablissement", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    @org.hibernate.annotations.SQLRestriction("retiree is not true")
     private List<Prestation> prestations = new ArrayList<>();
 
+    /** Retiré de la recherche par l'administration (vide = visible). */
+    private Boolean suspendu;
+
+    public boolean isSuspendu() { return Boolean.TRUE.equals(suspendu); }
+    public void setSuspendu(boolean suspendu) { this.suspendu = suspendu; }
     public Long getId() { return id; }
     public String getSlug() { return slug; }
     public void setSlug(String slug) { this.slug = slug; }
