@@ -10,8 +10,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,17 +34,14 @@ public class DonneesDemo implements CommandLineRunner {
     private final TicketRepository tickets;
     private final FormulaireService formulaires;
     private final PasswordEncoder encodeur;
-    private final Environment environnement;
 
     public DonneesDemo(EtablissementRepository etablissements, UtilisateurRepository utilisateurs,
-                       TicketRepository tickets, FormulaireService formulaires, PasswordEncoder encodeur,
-                       Environment environnement) {
+                       TicketRepository tickets, FormulaireService formulaires, PasswordEncoder encodeur) {
         this.etablissements = etablissements;
         this.utilisateurs = utilisateurs;
         this.tickets = tickets;
         this.formulaires = formulaires;
         this.encodeur = encodeur;
-        this.environnement = environnement;
     }
 
     @Override
@@ -142,9 +137,9 @@ public class DonneesDemo implements CommandLineRunner {
         client.setTelephone("22 123 456");
         utilisateurs.save(client);
 
-        // Mot de passe public : ce compte n'existe qu'avec le profil « demo ».
-        if (environnement.acceptsProfiles(Profiles.of("demo")))
-            utilisateurs.save(new Utilisateur("admin@dourek.tn", mdp, "Administration Dourek", Role.ADMIN, null, null));
+        // Compte administrateur de démonstration, créé avec PostgreSQL comme avec le profil « demo »
+        // (aucune page ne permet de créer un administrateur).
+        utilisateurs.save(new Utilisateur("admin@dourek.tn", mdp, "Administration Dourek", Role.ADMIN, null, null));
 
         remplirFiles(tous, karim);
         log.info("Données de démonstration créées : {} établissements. Connexion pro : karim@dourek.tn / {}", tous.size(), MOT_DE_PASSE);
