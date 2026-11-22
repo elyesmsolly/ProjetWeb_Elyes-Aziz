@@ -11,6 +11,25 @@ Livrable remis sous forme de ZIP. Comme le dépôt GitHub n'est pas joint, tout 
 
 > **Objectif 4 (finalisation et optimisation) : voir la section 7.**
 
+### Ce que demande l'Objectif 4, et où le trouver
+
+| Exigence du sujet | Où |
+|---|---|
+| Intégrer toutes les pages du sitemap (Objectif 2) | Section 7.1 : client, aide, gérant, administration, page 404 |
+| Composants modulaires et réutilisables, dossiers logiques | Sections 4.1 et 7.4 (`core/`, `shared/`, `pages/`, `pro/`, `admin/`) |
+| Routing complet, navigation fluide | Section 7.1 : routes protégées par rôle, chargement à la demande, page 404 |
+| Design uniforme selon la charte de l'Objectif 2 | Charte « Ton tour » de l'Objectif 2 (variables de `frontend/src/styles.css`), mêmes composants sur les nouvelles pages |
+| Données dynamiques (API réelle ou mock) : affichage, création, mise à jour | API Spring Boot réelle, sections 4 et 7.2 |
+| Animations légères, états de chargement | Sections 5.3 et 7.4 (transitions CSS, squelettes, messages d'erreur avec « Réessayer ») |
+| Navigation responsive (mobile, tablette) | Section 5.4 (6 largeurs, de 320 à 1440 px) |
+| Accessibilité (ARIA, contrastes, polices lisibles) | Section 5.3 (Lighthouse 100, audit axe sans défaut) |
+| Images, icônes et ressources statiques optimisées | Section 5.3 (icônes SVG, polices woff2 locales préchargées) |
+| Bundle réduit (lazy loading, code splitting) | Sections 5.3 et 7.1 |
+| Score Lighthouse | Section 5.3 (avant et après l'Objectif 4) |
+| Code propre et commenté, ESLint ou Prettier | Section 7.4 (`npm run verifier`) |
+| Tests sur plusieurs navigateurs et tailles d'écran | Sections 5.4 et 5.5 (Chrome, Edge, Firefox, WebKit) |
+| Travail d'équipe et répartition des rôles | Section 6 |
+
 ### Ce que demande l'Objectif 3, et où le trouver
 
 | Exigence du sujet | Où |
@@ -197,9 +216,9 @@ Pour tester depuis un téléphone sur le même Wi-Fi, ouvrir `http://<IP-du-PC>:
 | Employé (Poste 2, Salon Karim) | `sami@dourek.tn` | `dourek123` |
 | Gérant (Labo El Menzah) | `labo@dourek.tn` | `dourek123` |
 | Client (Yassine Trabelsi) | `client@dourek.tn` | `dourek123` |
-| Administration (profil `demo` seulement) | `admin@dourek.tn` | `dourek123` |
+| Administration | `admin@dourek.tn` | `dourek123` |
 
-Ces comptes se saisissent à la main sur la page de connexion (client) ou sur « Espace pro » (gérant, employé) : il n'y a pas de bouton de remplissage automatique.
+Ces comptes existent avec PostgreSQL comme avec le profil `demo`. Ils se saisissent à la main sur la page de connexion (client) ou sur « Espace pro » (gérant, employé, administration) : il n'y a pas de bouton de remplissage automatique.
 
 > Base PostgreSQL créée par une version précédente (nouveau rôle ADMIN, nouvelles colonnes) : la supprimer et la recréer (`DROP DATABASE dourek; CREATE DATABASE dourek;`), car un client n'a pas d'établissement (colonne désormais facultative).
 
@@ -407,6 +426,7 @@ Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctio
 | #8 README : framework, fonctionnalités, lancement | Elyes et Aziz | `docs/readme` |
 | #9 Tests : performance, accessibilité et multi-navigateurs | Elyes et Aziz | `feature/tests-qualite`, `fix/recherche-localisation` |
 | Améliorations après démonstration (compte client, IA Gemini, formulaire par IA, connexion d'abord) | Elyes et Aziz | branches 10 à 18 ci-dessous |
+| Objectif 4 : pages du sitemap, administration, UX, performances, qualité du code | Elyes et Aziz (même répartition par domaine qu'à l'Objectif 3) | branches 19 à 21 ci-dessous |
 
 ### 6.3 Branches (dans l'ordre de fusion)
 
@@ -430,6 +450,9 @@ Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctio
 | 16 | `feat/recherche-ia-intelligente` | Deux boutons de recherche (normale, avec l'IA), choix de l'assistant |
 | 17 | `feat/connexion-d-abord` | Connexion obligatoire avant le site, vrai ticket sur l'accueil, fautes de frappe corrigées |
 | 18 | `docs/readme-complet` | Ce README complet (Git, pages, lancement Windows, Firefox) |
+| 19 | `feature/objectif4-finalisation` | Objectif 4 : pages du sitemap, administration, UX, performances, ESLint et Prettier |
+| 20 | `fix/compte-admin` | Compte administrateur créé aussi avec PostgreSQL |
+| 21 | `docs/readme-objectif4` | README : exigences de l'Objectif 4, comptes, branches et historique |
 
 ### 6.4 Historique des commits (`git log`, hors commits de fusion)
 
@@ -462,6 +485,9 @@ Les tâches ont été suivies dans les Issues GitHub du dépôt, une par fonctio
 | 2026-11-14 | `feat/connexion-d-abord` | Recherche : fautes de frappe corrigées, liste d'un type toujours complète avec l'IA |
 | 2026-11-14 | `feat/connexion-d-abord` | README : connexion d'abord, vrai ticket sur l'accueil, fautes de frappe, 37 tests |
 | 2026-11-14 | `docs/readme-complet` | README : pages, lancement sous Windows, dépendances, Firefox, Git et répartition des tâches |
+| 2026-11-22 | `feature/objectif4-finalisation` | Objectif 4 : pages du sitemap, administration, UX, performances et qualité du code |
+| 2026-11-22 | `fix/compte-admin` | Compte administrateur créé aussi avec PostgreSQL, pas seulement avec le profil demo |
+| 2026-11-22 | `docs/readme-objectif4` | README : exigences de l'Objectif 4, compte administrateur, branches et historique |
 
 Chaque branche est ensuite fusionnée dans `main` par un commit « Fusion de *branche* dans main ».
 
