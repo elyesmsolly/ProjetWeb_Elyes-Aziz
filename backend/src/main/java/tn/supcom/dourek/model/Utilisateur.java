@@ -35,6 +35,9 @@ public class Utilisateur {
     /** Nom du poste de l'employé, ex. "Poste 2". */
     private String poste;
 
+    /** Compte bloqué par l'administration (vide = actif, pour les bases créées avant l'Objectif 4). */
+    private Boolean suspendu;
+
     public Utilisateur() {}
 
     public Utilisateur(String email, String motDePasse, String nom, Role role, Etablissement etablissement, String poste) {
@@ -53,6 +56,11 @@ public class Utilisateur {
     public Role getRole() { return role; }
     public Etablissement getEtablissement() { return etablissement; }
     public String getPoste() { return poste; }
+    public void setNom(String nom) { this.nom = nom; }
+    public void setRole(Role role) { this.role = role; }
+    public void setMotDePasse(String motDePasse) { this.motDePasse = motDePasse; }
+    public boolean isSuspendu() { return Boolean.TRUE.equals(suspendu); }
+    public void setSuspendu(boolean suspendu) { this.suspendu = suspendu; }
     public String getTelephone() { return telephone; }
     public void setTelephone(String telephone) { this.telephone = telephone; }
 }

@@ -1,8 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, switchMap } from 'rxjs';
+import { EMPTY, Observable, catchError, switchMap } from 'rxjs';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { heure, minutesDepuis } from '../../core/format';
@@ -28,6 +35,7 @@ export class Employe {
 
   protected readonly etat = signal<EtatFile | null>(null);
   protected readonly occupe = signal(false);
+  protected readonly erreur = signal<string | null>(null);
   protected readonly maintenant = signal(Date.now());
   protected readonly nomSurPlace = signal('');
   protected readonly prestationSurPlace = signal<number | null>(null);
@@ -38,7 +46,9 @@ export class Employe {
     const s = this.auth.session();
     return s ? `${s.poste || 'Poste 1'} · ${s.nom}` : '';
   });
-  protected readonly courant = computed(() => this.etat()?.enCours.find((t) => t.poste === this.monPoste()) ?? null);
+  protected readonly courant = computed(
+    () => this.etat()?.enCours.find((t) => t.poste === this.monPoste()) ?? null,
+  );
   protected readonly chrono = computed(() => {
     const t = this.courant();
     if (!t?.appeleLe) return '00:00';
@@ -50,7 +60,13 @@ export class Employe {
     if (!t) return [];
     const champs = t.champs.filter((c) => c.cle !== 'nom' && c.cle !== 'telephone');
     const liste = champs.map((c) => ({ label: c.label, valeur: formater(t.reponses[c.cle]) }));
-    return [...liste.slice(0, 2), { label: 'Ticket pris', valeur: `${heure(t.creeLe)} · ${t.surPlace ? 'sur place' : 'en ligne'}` }];
+    return [
+      ...liste.slice(0, 2),
+      {
+        label: 'Ticket pris',
+        valeur: `${heure(t.creeLe)} · ${t.surPlace ? 'sur place' : 'en ligne'}`,
+      },
+    ];
   });
 
   constructor() {
@@ -58,11 +74,25 @@ export class Employe {
     this.destroy.onDestroy(() => clearInterval(minuteur));
     const s = this.auth.session();
     if (!s) return;
-    inject(TempsReelService).file(s.etablissementId!)
-      .pipe(switchMap(() => this.api.etatFile()), takeUntilDestroyed())
-      .subscribe({
-        next: (e) => { this.etat.set(e); if (this.prestationSurPlace() === null) this.prestationSurPlace.set(e.prestations[0]?.id ?? null); },
-        error: (e) => { if (e.status === 401) this.sortir(); else this.toast.afficher(messageErreur(e), true); },
+    inject(TempsReelService)
+      .file(s.etablissementId!)
+      .pipe(
+        switchMap(() =>
+          this.api.etatFile().pipe(
+            catchError((e) => {
+              if (e.status === 401) this.sortir();
+              else this.erreur.set(messageErreur(e));
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((e) => {
+        this.etat.set(e);
+        this.erreur.set(null);
+        if (this.prestationSurPlace() === null)
+          this.prestationSurPlace.set(e.prestations[0]?.id ?? null);
       });
   }
 
@@ -70,8 +100,15 @@ export class Employe {
     if (this.occupe()) return;
     this.occupe.set(true);
     appel.subscribe({
-      next: (e) => { this.etat.set(e); this.occupe.set(false); if (succes) this.toast.afficher(succes(e)); },
-      error: (e) => { this.occupe.set(false); this.toast.afficher(messageErreur(e), true); },
+      next: (e) => {
+        this.etat.set(e);
+        this.occupe.set(false);
+        if (succes) this.toast.afficher(succes(e));
+      },
+      error: (e) => {
+        this.occupe.set(false);
+        this.toast.afficher(messageErreur(e), true);
+      },
     });
   }
 
@@ -81,20 +118,31 @@ export class Employe {
       return t ? `${t.numero} appelé : ${t.nomClient}` : 'Personne en attente.';
     });
   }
-  servi() { this.action(this.api.servi()); }
-  absent() { this.action(this.api.absent(), () => 'Client marqué absent.'); }
+  servi() {
+    this.action(this.api.servi());
+  }
+  absent() {
+    this.action(this.api.absent(), () => 'Client marqué absent.');
+  }
   pause() {
     const e = this.etat();
-    if (e) this.action(this.api.ouverture(!e.fileOuverte), (x) => (x.fileOuverte ? 'File rouverte.' : 'File en pause : plus de nouveaux tickets.'));
+    if (e)
+      this.action(this.api.ouverture(!e.fileOuverte), (x) =>
+        x.fileOuverte ? 'File rouverte.' : 'File en pause : plus de nouveaux tickets.',
+      );
   }
 
   ajouterSurPlace() {
     const nom = this.nomSurPlace().trim();
     const p = this.prestationSurPlace();
-    if (!nom || !p) { this.toast.afficher('Saisissez le prénom du client.', true); return; }
+    if (!nom || !p) {
+      this.toast.afficher('Saisissez le prénom du client.', true);
+      return;
+    }
     this.action(this.api.surPlace(nom, p, this.prioSurPlace()), (e) => {
       const t = [...e.enAttente].reverse().find((x) => x.nomClient === nom);
-      this.nomSurPlace.set(''); this.prioSurPlace.set(false);
+      this.nomSurPlace.set('');
+      this.prioSurPlace.set(false);
       return t ? `${nom} ajouté : ticket ${t.numero}` : `${nom} ajouté.`;
     });
   }
@@ -106,9 +154,14 @@ export class Employe {
     return { texte: 'En ligne', cls: '' };
   }
 
-  attendDepuis(t: TicketLigne) { return minutesDepuis(t.creeLe); }
+  attendDepuis(t: TicketLigne) {
+    return minutesDepuis(t.creeLe);
+  }
 
-  sortir() { this.auth.fermer(); this.router.navigateByUrl('/pro/connexion'); }
+  sortir() {
+    this.auth.fermer();
+    this.router.navigateByUrl('/pro/connexion');
+  }
 }
 
 function formater(v: unknown): string {

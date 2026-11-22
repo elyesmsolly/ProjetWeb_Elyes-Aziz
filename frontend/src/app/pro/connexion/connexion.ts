@@ -31,19 +31,33 @@ export class Connexion {
 
   seConnecter() {
     if (this.envoi()) return;
-    if (!this.email().trim() || !this.motDePasse()) { this.erreur.set('Saisissez votre e-mail et votre mot de passe.'); return; }
+    if (!this.email().trim() || !this.motDePasse()) {
+      this.erreur.set('Saisissez votre e-mail et votre mot de passe.');
+      return;
+    }
     this.envoi.set(true);
     this.api.connexion(this.email().trim(), this.motDePasse()).subscribe({
       next: (s) => {
         if (s.role === 'CLIENT') {
-          this.erreur.set('Ce compte est un compte client : connectez-vous depuis la page « Se connecter ».');
+          this.erreur.set(
+            'Ce compte est un compte client : connectez-vous depuis la page « Se connecter ».',
+          );
           this.envoi.set(false);
           return;
         }
         this.auth.ouvrir(s);
-        this.router.navigateByUrl(s.role === 'GERANT' && this.role() === 'GERANT' ? '/pro/tableau-de-bord' : '/pro/employe');
+        if (s.role === 'ADMIN') {
+          this.router.navigateByUrl('/admin');
+          return;
+        }
+        this.router.navigateByUrl(
+          s.role === 'GERANT' && this.role() === 'GERANT' ? '/pro/tableau-de-bord' : '/pro/employe',
+        );
       },
-      error: (e) => { this.erreur.set(messageErreur(e)); this.envoi.set(false); },
+      error: (e) => {
+        this.erreur.set(messageErreur(e));
+        this.envoi.set(false);
+      },
     });
   }
 }

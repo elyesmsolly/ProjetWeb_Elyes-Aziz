@@ -1,22 +1,47 @@
 <div class="container page">
   <div class="row between wrap top">
     <div>
-      <h2>{{ titre() }}</h2>
-      <div class="muted small">{{ ouverts() }} établissement{{ ouverts() > 1 ? 's' : '' }} ouvert{{ ouverts() > 1 ? 's' : '' }} · {{ reponse() ? 'attente au moment de la recherche' : 'attente mise à jour en direct' }}</div>
+      <h1 class="titre-page">{{ titre() }}</h1>
+      <div class="muted small">
+        {{ ouverts() }} établissement{{ ouverts() > 1 ? 's' : '' }} ouvert{{
+          ouverts() > 1 ? 's' : ''
+        }}
+        · {{ reponse() ? 'attente au moment de la recherche' : 'attente mise à jour en direct' }}
+      </div>
     </div>
     <div class="toggle" role="tablist" aria-label="Affichage">
-      <button role="tab" [class.on]="vue() === 'liste'" [attr.aria-selected]="vue() === 'liste'" (click)="vue.set('liste')"><app-icon name="list" [size]="14" />Liste</button>
-      <button role="tab" [class.on]="vue() === 'carte'" [attr.aria-selected]="vue() === 'carte'" (click)="vue.set('carte')"><app-icon name="map" [size]="14" />Carte</button>
+      <button
+        role="tab"
+        [class.on]="vue() === 'liste'"
+        [attr.aria-selected]="vue() === 'liste'"
+        (click)="vue.set('liste')"
+      >
+        <app-icon name="list" [size]="14" />Liste
+      </button>
+      <button
+        role="tab"
+        [class.on]="vue() === 'carte'"
+        [attr.aria-selected]="vue() === 'carte'"
+        (click)="vue.set('carte')"
+      >
+        <app-icon name="map" [size]="14" />Carte
+      </button>
     </div>
   </div>
 
   <div class="row wrap filtres">
     @for (c of categories(); track c.code) {
-      <button class="chip" [class.on]="categorie() === c.code" (click)="choisirCategorie(c.code)">{{ c.libelle }}</button>
+      <button class="chip" [class.on]="categorie() === c.code" (click)="choisirCategorie(c.code)">
+        {{ c.libelle }}
+      </button>
     }
     <span class="sep"></span>
-    <button class="chip" [class.on]="filtres().ouvert" (click)="basculer('ouvert')">Ouvert maintenant</button>
-    <button class="chip" [class.on]="filtres().attente20" (click)="basculer('attente20')">Attente &lt; 20 min</button>
+    <button class="chip" [class.on]="filtres().ouvert" (click)="basculer('ouvert')">
+      Ouvert maintenant
+    </button>
+    <button class="chip" [class.on]="filtres().attente20" (click)="basculer('attente20')">
+      Attente &lt; 20 min
+    </button>
     <button class="chip" [class.on]="filtres().km1" (click)="basculer('km1')">&lt; 1 km</button>
     <button class="chip" [class.on]="filtres().note4" (click)="basculer('note4')">★ 4+</button>
     <label class="tri">
@@ -37,70 +62,149 @@
           <label class="input-icon champ">
             <span class="sr-only">Votre recherche</span>
             <app-icon name="search" />
-            <input id="q" class="input" name="q" [ngModel]="saisie()" (ngModelChange)="saisie.set($event)" maxlength="500"
-              placeholder="Un nom, un service ou une phrase…" autocomplete="off" />
+            <input
+              id="q"
+              class="input"
+              name="q"
+              [ngModel]="saisie()"
+              (ngModelChange)="saisie.set($event)"
+              maxlength="500"
+              placeholder="Un nom, un service ou une phrase…"
+              autocomplete="off"
+            />
           </label>
           <button class="btn ghost" type="button" (click)="rechercherNormal()">Rechercher</button>
-          <button class="btn" type="button" (click)="demander()" [disabled]="reflechit() || !saisie().trim()">
-            @if (reflechit()) { <span class="spinner"></span> } @else { <app-icon name="spark" [size]="16" /> }
+          <button
+            class="btn"
+            type="button"
+            (click)="demander()"
+            [disabled]="reflechit() || !saisie().trim()"
+          >
+            @if (reflechit()) {
+              <span class="spinner"></span>
+            } @else {
+              <app-icon name="spark" [size]="16" />
+            }
             Rechercher avec l’IA
           </button>
         </form>
         @if (reflechit()) {
-          <p class="reponse muted" role="status">L’assistant lit votre demande et cherche parmi les établissements…</p>
+          <p class="reponse muted" role="status">
+            L’assistant lit votre demande et cherche parmi les établissements…
+          </p>
         } @else if (reponse(); as r) {
           <p class="reponse" role="status"><b>Assistant Dourek :</b> {{ r.reponse }}</p>
           @if (compris().length) {
             <div class="row wrap compris">
               <span class="small muted">Compris :</span>
-              @for (c of compris(); track c) { <span class="badge">{{ c }}</span> }
+              @for (c of compris(); track c) {
+                <span class="badge">{{ c }}</span>
+              }
             </div>
           }
           <div class="row wrap propositions">
-            <span class="small muted">{{ pluriel(r.resultats.length, 'établissement') }} {{ r.resultats.length > 1 ? 'répondent' : 'répond' }} à votre demande.</span>
-            <button type="button" class="chip" (click)="toutVoir()">Voir tous les établissements</button>
+            <span class="small muted"
+              >{{ pluriel(r.resultats.length, 'établissement') }}
+              {{ r.resultats.length > 1 ? 'répondent' : 'répond' }} à votre demande.</span
+            >
+            <button type="button" class="chip" (click)="toutVoir()">
+              Voir tous les établissements
+            </button>
           </div>
           <div class="small muted note">
-            L’IA comprend votre phrase et choisit les établissements qui y répondent. Les distances, les attentes et le classement sont calculés par Dourek.
-            @if (r.source === 'local') { <span>(analyse locale par mots-clés : aucune IA n’est configurée sur ce serveur)</span> }
+            L’IA comprend votre phrase et choisit les établissements qui y répondent. Les distances,
+            les attentes et le classement sont calculés par Dourek.
+            @if (r.source === 'local') {
+              <span
+                >(analyse locale par mots-clés : aucune IA n’est configurée sur ce serveur)</span
+              >
+            }
           </div>
         } @else {
-          <p class="reponse muted"><b>Rechercher</b> trouve par mots : nom, type, prestation, quartier. <b>Rechercher avec l’IA</b> comprend une phrase entière.</p>
+          <p class="reponse muted">
+            <b>Rechercher</b> trouve par mots : nom, type, prestation, quartier.
+            <b>Rechercher avec l’IA</b> comprend une phrase entière.
+          </p>
           <div class="row wrap propositions">
             <span class="small muted">Essayez avec l’IA :</span>
-            @for (ex of exemplesIa; track ex) { <button type="button" class="chip" (click)="demander(ex)"><app-icon name="spark" [size]="14" />{{ ex }}</button> }
+            @for (ex of exemplesIa; track ex) {
+              <button type="button" class="chip" (click)="demander(ex)">
+                <app-icon name="spark" [size]="14" />{{ ex }}
+              </button>
+            }
           </div>
         }
       </div>
 
       @if (erreur()) {
-        <div class="card"><p class="error">{{ erreur() }}</p><button class="btn ghost sm" style="margin-top:12px" (click)="charger()">Réessayer</button></div>
+        <div class="card">
+          <p class="error">{{ erreur() }}</p>
+          <button class="btn ghost sm" style="margin-top: 12px" (click)="charger()">
+            Réessayer
+          </button>
+        </div>
       } @else if (tous() === null) {
-        @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height:130px"></div> }
+        @for (i of [1, 2, 3]; track i) {
+          <div class="card skeleton" style="height: 130px"></div>
+        }
       } @else {
         @for (e of resultats(); track e.id; let i = $index) {
-          <a class="card res" [class.best]="e.meilleurChoix" [class.ferme]="!e.fileOuverte" [routerLink]="['/etablissements', e.slug]"
-             (mouseenter)="selection.set(e.id)">
-            <div class="thumb" [class.v2]="i % 3 === 1" [class.v3]="i % 3 === 2"><app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="32" /></div>
+          <a
+            class="card res"
+            [class.best]="e.meilleurChoix"
+            [class.ferme]="!e.fileOuverte"
+            [routerLink]="['/etablissements', e.slug]"
+            (mouseenter)="selection.set(e.id)"
+          >
+            <div class="thumb" [class.v2]="i % 3 === 1" [class.v3]="i % 3 === 2">
+              <app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="32" />
+            </div>
             <div class="info">
-              <div class="row wrap" style="gap:8px"><h3>{{ e.nom }}</h3>@if (e.meilleurChoix) { <span class="badge primary">@if (reponse()) { <app-icon name="spark" [size]="12" />Choix de l’assistant } @else { Meilleur choix }</span> }</div>
+              <div class="row wrap" style="gap: 8px">
+                <h2 class="titre-carte">{{ e.nom }}</h2>
+                @if (e.meilleurChoix) {
+                  <span class="badge primary">
+                    @if (reponse()) {
+                      <app-icon name="spark" [size]="12" />Choix de l’assistant
+                    } @else {
+                      Meilleur choix
+                    }
+                  </span>
+                }
+              </div>
               <div class="meta">
                 <span><app-icon name="pin" [size]="14" />{{ fmt.distance(e.distanceKm) }}</span>
-                <span><app-icon name="star" [size]="14" />{{ fmt.note(e.note) }} ({{ e.nombreAvis }})</span>
-                <span><app-icon name="clock" [size]="14" />{{ e.fileOuverte ? 'Ouvert · ferme ' + e.heureFermeture + ' h' : 'File en pause' }}</span>
+                <span
+                  ><app-icon name="star" [size]="14" />{{ fmt.note(e.note) }} ({{
+                    e.nombreAvis
+                  }})</span
+                >
+                <span
+                  ><app-icon name="clock" [size]="14" />{{
+                    e.fileOuverte ? 'Ouvert · ferme ' + e.heureFermeture + ' h' : 'File en pause'
+                  }}</span
+                >
               </div>
               @if (e.fileOuverte) {
                 <div class="row wrap services">
-                  @for (p of services(e); track p.id) { <span class="badge">{{ p.nom }} {{ p.dureeMinutes }} min</span> }
-                  <span class="badge">{{ e.postesOuverts }} poste{{ e.postesOuverts > 1 ? 's' : '' }}</span>
+                  @for (p of services(e); track p.id) {
+                    <span class="badge">{{ p.nom }} {{ p.dureeMinutes }} min</span>
+                  }
+                  <span class="badge"
+                    >{{ e.postesOuverts }} poste{{ e.postesOuverts > 1 ? 's' : '' }}</span
+                  >
                 </div>
               }
             </div>
             <div class="wait">
               @if (e.fileOuverte) {
                 <div class="small muted">Attente</div>
-                <div class="v" [class]="'c-' + fmt.badgeAttente(e.attenteMinutes)">~{{ e.attenteMinutes }} min</div>
-                <div class="small muted">{{ e.personnesEnAttente }} personne{{ e.personnesEnAttente > 1 ? 's' : '' }}</div>
+                <div class="v" [class]="'c-' + fmt.badgeAttente(e.attenteMinutes)">
+                  ~{{ e.attenteMinutes }} min
+                </div>
+                <div class="small muted">
+                  {{ e.personnesEnAttente }} personne{{ e.personnesEnAttente > 1 ? 's' : '' }}
+                </div>
                 <span class="btn sm">Rejoindre</span>
               } @else {
                 <span class="badge danger">Fermé aux tickets</span>
@@ -109,12 +213,19 @@
           </a>
         } @empty {
           <div class="card vide">
-            <h3>Aucun établissement ne correspond</h3>
+            <h2 class="titre-carte">Aucun établissement ne correspond</h2>
             @if (reponse()) {
               <p class="muted small">Retirez un filtre ou reformulez votre demande.</p>
             } @else {
-              <p class="muted small">Retirez un filtre, ou décrivez votre besoin en une phrase et essayez avec l’IA.</p>
-              @if (saisie().trim()) { <button type="button" class="btn sm" style="margin-top:12px" (click)="demander()"><app-icon name="spark" [size]="14" />Rechercher « {{ saisie().trim() }} » avec l’IA</button> }
+              <p class="muted small">
+                Retirez un filtre, ou décrivez votre besoin en une phrase et essayez avec l’IA.
+              </p>
+              @if (saisie().trim()) {
+                <button type="button" class="btn sm" style="margin-top: 12px" (click)="demander()">
+                  <app-icon name="spark" [size]="14" />Rechercher « {{ saisie().trim() }} » avec
+                  l’IA
+                </button>
+              }
             }
           </div>
         }
@@ -122,11 +233,23 @@
     </div>
 
     <div class="mapbox card">
-      <app-carte [reperes]="reperes()" [moi]="position.actuelle()" (choisir)="choisirSurCarte($event)" />
+      <app-carte
+        [reperes]="reperes()"
+        [moi]="position.actuelle()"
+        (choisir)="choisirSurCarte($event)"
+      />
       @if (choisi(); as c) {
         <div class="card apercu">
-          <div class="grow"><b>{{ c.nom }}</b><div class="small muted">{{ fmt.distance(c.distanceKm) }} · ~{{ c.attenteMinutes }} min · {{ c.personnesEnAttente }} personne{{ c.personnesEnAttente > 1 ? 's' : '' }}</div></div>
-          <button class="btn sm" (click)="ouvrir(c.slug)" [disabled]="!c.fileOuverte">Rejoindre</button>
+          <div class="grow">
+            <b>{{ c.nom }}</b>
+            <div class="small muted">
+              {{ fmt.distance(c.distanceKm) }} · ~{{ c.attenteMinutes }} min ·
+              {{ c.personnesEnAttente }} personne{{ c.personnesEnAttente > 1 ? 's' : '' }}
+            </div>
+          </div>
+          <button class="btn sm" (click)="ouvrir(c.slug)" [disabled]="!c.fileOuverte">
+            Rejoindre
+          </button>
         </div>
       }
     </div>

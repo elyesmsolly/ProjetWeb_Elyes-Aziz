@@ -2,26 +2,45 @@
   <section class="hero">
     <div class="hero-text page-enter">
       <h1>Faites la queue<br />depuis chez vous.</h1>
-      <p class="lead">Trouvez l’établissement le plus proche avec la plus courte attente, prenez votre ticket à distance et arrivez juste à temps.</p>
+      <p class="lead">
+        Trouvez l’établissement le plus proche avec la plus courte attente, prenez votre ticket à
+        distance et arrivez juste à temps.
+      </p>
       <form class="searchbox" (ngSubmit)="rechercher()">
         <label class="input-icon">
           <span class="sr-only">Quel service ?</span>
           <app-icon name="search" />
-          <input class="input lg" name="service" [ngModel]="service()" (ngModelChange)="service.set($event)" placeholder="Quel service ?" />
+          <input
+            class="input lg"
+            name="service"
+            [ngModel]="service()"
+            (ngModelChange)="service.set($event)"
+            placeholder="Quel service ?"
+          />
         </label>
         <label class="input-icon">
           <span class="sr-only">Où ?</span>
           <app-icon name="pin" />
-          <input class="input lg" name="lieu" [ngModel]="lieu()" (ngModelChange)="lieu.set($event)" />
+          <input
+            class="input lg"
+            name="lieu"
+            [ngModel]="lieu()"
+            (ngModelChange)="lieu.set($event)"
+            placeholder="Où ? Ex. Ennasr"
+          />
         </label>
         <div class="actions">
           <button class="btn lg ghost" type="submit">Rechercher</button>
-          <button class="btn lg" type="button" (click)="demanderAssistant()"><app-icon name="spark" [size]="18" />Avec l’IA</button>
+          <button class="btn lg" type="button" (click)="demanderAssistant()">
+            <app-icon name="spark" [size]="18" />Avec l’IA
+          </button>
         </div>
       </form>
       <div class="row wrap assist">
         <span class="small muted">Avec l’IA, écrivez une phrase :</span>
-        <button class="chip" type="button" (click)="demanderAssistant(exemple)"><app-icon name="spark" [size]="14" />« {{ exemple }} »</button>
+        <button class="chip" type="button" (click)="demanderAssistant(exemple)">
+          <app-icon name="spark" [size]="14" />« {{ exemple }} »
+        </button>
       </div>
     </div>
 
@@ -31,28 +50,55 @@
         <a class="phonecard led" routerLink="/ticket" title="Ouvrir mes tickets">
           @if (enCours(); as liste) {
             @if (liste[0]; as t) {
-              <span class="badge etiquette">{{ liste.length > 1 ? 'Votre prochain ticket' : 'Votre ticket en cours' }}</span>
+              <span class="badge etiquette">{{
+                liste.length > 1 ? 'Votre prochain ticket' : 'Votre ticket en cours'
+              }}</span>
               <div class="small muted">Chez {{ t.etablissementNom }} · {{ t.prestation }}</div>
               <div class="led-num bignum">{{ t.numero.replace('-', '‑') }}</div>
               @if (t.statut === 'APPELE') {
                 <span class="badge accent">C’est votre tour</span>
-                <div class="small muted">Présentez-vous à <b>{{ t.poste?.split(' · ')[0] ?? 'l’accueil' }}</b> maintenant.</div>
+                <div class="small muted">
+                  Présentez-vous à <b>{{ t.poste?.split(' · ')[0] ?? 'l’accueil' }}</b> maintenant.
+                </div>
               } @else {
-                <span class="badge ok"><span class="dot live"></span>{{ t.personnesAvant === 0 ? 'Vous êtes le prochain' : t.personnesAvant + (t.personnesAvant > 1 ? ' personnes avant vous' : ' personne avant vous') }}</span>
-                <div class="small muted">Passage estimé vers <b>{{ fmt.heure(t.passageEstime) }}</b> (~{{ t.attenteMinutes }} min)</div>
+                <span class="badge ok"
+                  ><span class="dot live"></span
+                  >{{
+                    t.personnesAvant === 0
+                      ? 'Vous êtes le prochain'
+                      : t.personnesAvant +
+                        (t.personnesAvant > 1 ? ' personnes avant vous' : ' personne avant vous')
+                  }}</span
+                >
+                <div class="small muted">
+                  Passage estimé vers <b>{{ fmt.heure(t.passageEstime) }}</b> (~{{
+                    t.attenteMinutes
+                  }}
+                  min)
+                </div>
               }
               @if (liste.length > 1) {
                 <ul class="autres">
                   @for (x of liste.slice(1); track x.code) {
-                    <li><b>{{ x.numero }}</b><span class="nom">{{ x.etablissementNom }}</span><span>{{ x.statut === 'APPELE' ? 'Appelé' : '~' + x.attenteMinutes + ' min' }}</span></li>
+                    <li>
+                      <b>{{ x.numero }}</b><span class="nom">{{ x.etablissementNom }}</span
+                      ><span>{{
+                        x.statut === 'APPELE' ? 'Appelé' : '~' + x.attenteMinutes + ' min'
+                      }}</span>
+                    </li>
                   }
                 </ul>
               }
-              <span class="voir">Voir {{ liste.length > 1 ? 'mes ' + liste.length + ' tickets' : 'mon ticket' }} <app-icon name="arrow" [size]="16" /></span>
+              <span class="voir"
+                >Voir {{ liste.length > 1 ? 'mes ' + liste.length + ' tickets' : 'mon ticket' }}
+                <app-icon name="arrow" [size]="16"
+              /></span>
             } @else {
               <span class="rond"><app-icon name="ticket" [size]="34" /></span>
               <b class="titre">Vous n’avez pas de ticket en cours</b>
-              <div class="small muted">Choisissez un établissement et prenez votre ticket à distance : il s’affichera ici.</div>
+              <div class="small muted">
+                Choisissez un établissement et prenez votre ticket à distance : il s’affichera ici.
+              </div>
               <span class="voir">Voir mes tickets <app-icon name="arrow" [size]="16" /></span>
             }
           } @else {
@@ -60,54 +106,98 @@
           }
         </a>
       } @else {
-        <a class="phonecard led" [routerLink]="auth.gerant() ? '/pro/tableau-de-bord' : '/pro/employe'">
+        <a
+          class="phonecard led"
+          [routerLink]="auth.gerant() ? '/pro/tableau-de-bord' : '/pro/employe'"
+        >
           <span class="badge etiquette">Espace pro</span>
           <span class="rond"><app-icon name="store" [size]="34" /></span>
           <b class="titre">{{ auth.session()?.etablissementNom }}</b>
           <div class="small muted">Vous êtes connecté avec un compte professionnel.</div>
-          <span class="voir">{{ auth.gerant() ? 'Ouvrir mon tableau de bord' : 'Ouvrir l’écran de mon poste' }} <app-icon name="arrow" [size]="16" /></span>
+          <span class="voir"
+            >{{ auth.gerant() ? 'Ouvrir mon tableau de bord' : 'Ouvrir l’écran de mon poste' }}
+            <app-icon name="arrow" [size]="16"
+          /></span>
         </a>
       }
     </div>
   </section>
 
   <section>
-    <div class="row between head"><h2>Que cherchez-vous ?</h2><a class="small more" routerLink="/etablissements">Toutes les catégories →</a></div>
-    <div class="cats">
-      @for (c of categories(); track c.code) {
-        <a class="card cat" routerLink="/etablissements" [queryParams]="{ categorie: c.code }">
-          <div class="ic"><app-icon [name]="iconeCategorie(c.code)" [size]="24" /></div>
-          <b>{{ c.libelle }}</b>
-          <div class="small muted">{{ c.nombre ? c.nombre + " près de vous" : "Voir tout" }}</div>
-        </a>
-      } @empty {
-        @for (i of [1, 2, 3, 4, 5, 6]; track i) { <div class="card cat skeleton" style="height:128px"></div> }
-      }
+    <div class="row between head">
+      <h2>Que cherchez-vous ?</h2>
+      <a class="small more" routerLink="/etablissements">Toutes les catégories →</a>
     </div>
+    @if (categories() === null) {
+      <p class="card muted" role="alert">
+        Les catégories n’ont pas pu être chargées. Rechargez la page.
+      </p>
+    } @else {
+      <div class="cats">
+        @for (c of categories() ?? []; track c.code) {
+          <a class="card cat" routerLink="/etablissements" [queryParams]="{ categorie: c.code }">
+            <div class="ic"><app-icon [name]="iconeCategorie(c.code)" [size]="24" /></div>
+            <b>{{ c.libelle }}</b>
+            <div class="small muted">{{ c.nombre ? c.nombre + ' près de vous' : 'Voir tout' }}</div>
+          </a>
+        } @empty {
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="card cat skeleton" style="height: 128px"></div>
+          }
+        }
+      </div>
+    }
   </section>
 
   <section>
-    <div class="row between head"><h2>Près de vous maintenant</h2><a class="btn ghost sm" routerLink="/etablissements" [queryParams]="{ vue: 'carte' }">Voir la carte <app-icon name="map" [size]="16" /></a></div>
+    <div class="row between head">
+      <h2>Près de vous maintenant</h2>
+      <a class="btn ghost sm" routerLink="/etablissements" [queryParams]="{ vue: 'carte' }"
+        >Voir la carte <app-icon name="map" [size]="16"
+      /></a>
+    </div>
     @if (proches() === null) {
-      <p class="card muted">Impossible de joindre le serveur. Lancez l’API Spring Boot (voir le README).</p>
+      <p class="card muted">
+        Les établissements n’ont pas pu être chargés. Vérifiez votre connexion puis rechargez la
+        page.
+      </p>
     } @else {
       <div class="near">
         @for (e of (proches() ?? []).slice(0, 3); track e.id; let i = $index) {
           <a class="card" [routerLink]="['/etablissements', e.slug]">
-            <div class="thumb" [class.v2]="i === 1" [class.v3]="i === 2" style="height:140px;margin-bottom:14px"><app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="44" /></div>
-            <div class="row between"><h3>{{ e.nom }}</h3><span class="badge" [class]="fmt.badgeAttente(e.attenteMinutes)">~{{ e.attenteMinutes }} min</span></div>
-            <div class="small muted meta">{{ e.categorieLibelle }} · {{ fmt.distance(e.distanceKm) }} · ★ {{ fmt.note(e.note) }}</div>
+            <div
+              class="thumb"
+              [class.v2]="i === 1"
+              [class.v3]="i === 2"
+              style="height: 140px; margin-bottom: 14px"
+            >
+              <app-icon [name]="fmt.icone(e.categorie, e.categorieLibelle)" [size]="44" />
+            </div>
+            <div class="row between">
+              <h3>{{ e.nom }}</h3>
+              <span class="badge" [class]="fmt.badgeAttente(e.attenteMinutes)"
+                >~{{ e.attenteMinutes }} min</span
+              >
+            </div>
+            <div class="small muted meta">
+              {{ e.categorieLibelle }} · {{ fmt.distance(e.distanceKm) }} · ★ {{ fmt.note(e.note) }}
+            </div>
             <span class="btn block">Rejoindre la file</span>
           </a>
         } @empty {
-          @for (i of [1, 2, 3]; track i) { <div class="card skeleton" style="height:280px"></div> }
+          @for (i of [1, 2, 3]; track i) {
+            <div class="card skeleton" style="height: 280px"></div>
+          }
         }
       </div>
     }
   </section>
 
   <section class="card cta">
-    <div><h2>Vous êtes gérant ?</h2><p>Créez votre file et votre formulaire en moins de 10 minutes, sans matériel.</p></div>
+    <div>
+      <h2>Vous êtes gérant ?</h2>
+      <p>Créez votre file et votre formulaire en moins de 10 minutes, sans matériel.</p>
+    </div>
     <a class="btn accent lg" routerLink="/pro/inscription">Créer mon établissement</a>
   </section>
 </div>

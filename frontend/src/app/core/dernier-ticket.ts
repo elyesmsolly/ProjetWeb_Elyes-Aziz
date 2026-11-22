@@ -9,15 +9,27 @@ export class DernierTicket {
 
   garder(code: string) {
     this.code.set(code);
-    try { localStorage.setItem(CLE, code); } catch { /* navigation privée */ }
+    try {
+      localStorage.setItem(CLE, code);
+    } catch {
+      /* navigation privée */
+    }
   }
 
   oublier() {
     this.code.set(null);
-    try { localStorage.removeItem(CLE); } catch { /* rien */ }
+    try {
+      localStorage.removeItem(CLE);
+    } catch {
+      /* rien */
+    }
   }
 }
 
 function lire(): string | null {
-  try { return localStorage.getItem(CLE); } catch { return null; }
+  try {
+    return localStorage.getItem(CLE);
+  } catch {
+    return null;
+  }
 }

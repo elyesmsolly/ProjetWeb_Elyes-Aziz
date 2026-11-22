@@ -17,6 +17,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
+            "allowedCommonJsDependencies": ["leaflet"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -25,7 +26,6 @@
               }
             ],
             "styles": [
-              "node_modules/leaflet/dist/leaflet.css",
               "src/fonts.css",
               "src/styles.css"
             ]
@@ -35,8 +35,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "900kB",
-                  "maximumError": "1.5MB"
+                  "maximumWarning": "450kB",
+                  "maximumError": "600kB"
                 },
                 {
                   "type": "anyComponentStyle",

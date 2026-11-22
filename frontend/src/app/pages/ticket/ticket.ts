@@ -1,7 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Subscription, switchMap } from 'rxjs';
+import { EMPTY, Subscription, catchError, switchMap } from 'rxjs';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { DernierTicket } from '../../core/dernier-ticket';
 import { heure } from '../../core/format';
@@ -9,6 +18,7 @@ import { TicketVue } from '../../core/models';
 import { PositionService } from '../../core/position.service';
 import { TempsReelService } from '../../core/temps-reel.service';
 import { ToastService } from '../../core/toast.service';
+import { AvisTicket } from '../../shared/avis-ticket';
 import { Carte } from '../../shared/carte';
 import { Icon } from '../../shared/icon';
 
@@ -18,7 +28,7 @@ const enCours = (t: TicketVue) => t.statut === 'EN_ATTENTE' || t.statut === 'APP
 @Component({
   selector: 'app-ticket',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Icon, Carte],
+  imports: [AvisTicket, RouterLink, Icon, Carte],
   templateUrl: './ticket.html',
   styleUrl: './ticket.css',
 })
@@ -49,7 +59,9 @@ export class Ticket {
   protected readonly anciens = computed(() => (this.historique() ?? []).filter((x) => !enCours(x)));
   protected readonly bientot = computed(() => {
     const t = this.t();
-    return !!t && t.statut === 'EN_ATTENTE' && this.alerte15() && t.attenteMinutes <= SEUIL_ALERTE_MIN;
+    return (
+      !!t && t.statut === 'EN_ATTENTE' && this.alerte15() && t.attenteMinutes <= SEUIL_ALERTE_MIN
+    );
   });
   protected readonly etapes = computed(() => {
     const s = this.t()?.statut;
@@ -64,39 +76,56 @@ export class Ticket {
 
   private ecoute?: Subscription;
   private dernierStatut?: string;
+  /** « Bientôt votre tour » ne sonne qu'une fois, pas à chaque mouvement de la file. */
+  private averti = false;
   private derniereMaj = Date.now();
 
   constructor() {
     effect(() => {
       const code = this.code();
-      if (code) { this.charger(code); return; }
+      if (code) {
+        this.charger(code);
+        return;
+      }
       // « Mes tickets » sans code : un seul ticket en cours, on l'ouvre directement ; sinon on montre la liste
       // (tickets en cours d'abord, celui qui passe le plus tôt en premier : c'est l'ordre donné par l'API).
       this.api.mesTickets().subscribe({
         next: (liste) => {
           const actifs = liste.filter(enCours);
-          if (actifs.length === 1) this.router.navigate(['/ticket', actifs[0].code], { replaceUrl: true });
+          if (actifs.length === 1)
+            this.router.navigate(['/ticket', actifs[0].code], { replaceUrl: true });
           else this.historique.set(liste);
         },
         error: (e) => this.erreur.set(messageErreur(e)),
       });
     });
-    const minuteur = setInterval(() => this.majIl.set(Math.round((Date.now() - this.derniereMaj) / 1000)), 1000);
+    const minuteur = setInterval(
+      () => this.majIl.set(Math.round((Date.now() - this.derniereMaj) / 1000)),
+      1000,
+    );
     this.destroy.onDestroy(() => clearInterval(minuteur));
   }
 
   private charger(code: string) {
     this.ecoute?.unsubscribe();
+    this.dernierStatut = undefined; // un autre ticket ne doit pas déclencher l'alerte du précédent
+    this.averti = false;
     this.api.ticket(code).subscribe({
       next: (t) => {
         this.appliquer(t);
-        this.ecoute = this.tempsReel.file(t.etablissementId)
-          .pipe(switchMap(() => this.api.ticket(code)), takeUntilDestroyed(this.destroy))
+        this.ecoute = this.tempsReel
+          .file(t.etablissementId)
+          .pipe(
+            switchMap(() => this.api.ticket(code).pipe(catchError(() => EMPTY))),
+            takeUntilDestroyed(this.destroy),
+          )
           .subscribe((maj) => this.appliquer(maj));
       },
       error: (e) => {
-        if (e.status === 404) { this.dernier.oublier(); this.erreur.set('Ce ticket n’existe plus.'); }
-        else if (e.status === 403) this.erreur.set('Ce ticket appartient à un autre compte.');
+        if (e.status === 404) {
+          this.dernier.oublier();
+          this.erreur.set('Ce ticket n’existe plus.');
+        } else if (e.status === 403) this.erreur.set('Ce ticket appartient à un autre compte.');
         else this.erreur.set(messageErreur(e));
       },
     });
@@ -109,7 +138,16 @@ export class Ticket {
     this.majIl.set(0);
     this.dernierStatut = t.statut;
     if (avant && avant !== t.statut && t.statut === 'APPELE') this.cestVotreTour();
-    else if (avant === 'EN_ATTENTE' && t.statut === 'EN_ATTENTE' && t.attenteMinutes <= SEUIL_ALERTE_MIN && this.son()) this.signal(1);
+    else if (
+      !this.averti &&
+      avant === 'EN_ATTENTE' &&
+      t.statut === 'EN_ATTENTE' &&
+      t.attenteMinutes <= SEUIL_ALERTE_MIN &&
+      this.son()
+    ) {
+      this.averti = true;
+      this.signal(1);
+    }
   }
 
   /** Le moment de l'application : l'afficheur s'allume, son et vibration. */
@@ -120,42 +158,84 @@ export class Ticket {
   }
 
   private signal(fois: number) {
-    try { navigator.vibrate?.(Array.from({ length: fois * 2 - 1 }, (_, i) => (i % 2 ? 120 : 220))); } catch { /* non supporté */ }
+    // Le navigateur refuse son et vibration tant que la page n'a pas été touchée.
+    if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+    try {
+      navigator.vibrate?.(Array.from({ length: fois * 2 - 1 }, (_, i) => (i % 2 ? 120 : 220)));
+    } catch {
+      /* non supporté */
+    }
     try {
       const ctx = new AudioContext();
       for (let i = 0; i < fois; i++) {
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.frequency.value = 880;
+        o.connect(g);
+        g.connect(ctx.destination);
         const t0 = ctx.currentTime + i * 0.35;
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
-        o.start(t0); o.stop(t0 + 0.3);
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+        o.start(t0);
+        o.stop(t0 + 0.3);
       }
-    } catch { /* audio bloqué tant que l'utilisateur n'a pas interagi */ }
+    } catch {
+      /* audio bloqué tant que l'utilisateur n'a pas interagi */
+    }
   }
 
   laisserPasser() {
-    const t = this.t(); if (!t) return;
+    const t = this.t();
+    if (!t) return;
     this.api.laisserPasser(t.code).subscribe({
-      next: (maj) => { this.appliquer(maj); this.toast.afficher('Vous avez laissé passer une personne. Votre ticket est gardé.'); },
+      next: (maj) => {
+        this.appliquer(maj);
+        this.toast.afficher('Vous avez laissé passer une personne. Votre ticket est gardé.');
+      },
       error: (e) => this.toast.afficher(messageErreur(e), true),
     });
   }
 
   annuler() {
-    const t = this.t(); if (!t) return;
-    if (!this.confirmerAnnulation()) { this.confirmerAnnulation.set(true); return; }
+    const t = this.t();
+    if (!t) return;
+    if (!this.confirmerAnnulation()) {
+      this.confirmerAnnulation.set(true);
+      return;
+    }
     this.api.annuler(t.code).subscribe({
-      next: (maj) => { this.appliquer(maj); this.confirmerAnnulation.set(false); this.dernier.oublier(); this.toast.afficher('Ticket annulé.'); },
+      next: (maj) => {
+        this.appliquer(maj);
+        this.confirmerAnnulation.set(false);
+        this.dernier.oublier();
+        this.toast.afficher('Ticket annulé.');
+      },
       error: (e) => this.toast.afficher(messageErreur(e), true),
     });
   }
 
   itineraire() {
-    const t = this.t(); if (!t) return;
-    window.open(`https://www.openstreetmap.org/directions?route=;${t.latitude},${t.longitude}#map=16/${t.latitude}/${t.longitude}`, '_blank', 'noopener');
+    const t = this.t();
+    if (!t) return;
+    window.open(
+      `https://www.openstreetmap.org/directions?route=;${t.latitude},${t.longitude}#map=16/${t.latitude}/${t.longitude}`,
+      '_blank',
+      'noopener',
+    );
   }
 
   libelleStatut(s: string) {
-    return ({ EN_ATTENTE: 'En attente', APPELE: 'C’est votre tour', SERVI: 'Servi', ABSENT: 'Absent', ANNULE: 'Annulé' } as Record<string, string>)[s] ?? s;
+    return (
+      (
+        {
+          EN_ATTENTE: 'En attente',
+          APPELE: 'C’est votre tour',
+          SERVI: 'Servi',
+          ABSENT: 'Absent',
+          ANNULE: 'Annulé',
+        } as Record<string, string>
+      )[s] ?? s
+    );
   }
 }

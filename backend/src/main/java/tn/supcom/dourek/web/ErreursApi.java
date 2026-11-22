@@ -36,6 +36,12 @@ public class ErreursApi {
         return erreur(400, "Champ manquant ou invalide : " + (champs.isBlank() ? "vérifiez votre saisie" : champs));
     }
 
+    /** Contrainte de la base (valeur trop longue, doublon simultané) : jamais d'erreur 500 illisible. */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> base(org.springframework.dao.DataIntegrityViolationException ex) {
+        return erreur(400, "Données refusées : une valeur est trop longue ou déjà utilisée");
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> illisible(HttpMessageNotReadableException ex) {
         return erreur(400, "Requête illisible : vérifiez les données envoyées");

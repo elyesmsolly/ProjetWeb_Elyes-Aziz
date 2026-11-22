@@ -43,6 +43,7 @@ public class AuthService {
         Utilisateur u = utilisateurs.findByEmailIgnoreCase(req.email().trim())
                 .filter(x -> encodeur.matches(req.motDePasse(), x.getMotDePasse()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "E-mail ou mot de passe incorrect"));
+        if (u.isSuspendu()) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ce compte est suspendu par l'administration");
         return reponse(u);
     }
 

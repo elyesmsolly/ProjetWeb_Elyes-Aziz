@@ -34,30 +34,47 @@ export class Compte {
     this.erreur.set(null);
     const email = this.email().trim();
     if (this.mode() === 'inscription') {
-      if (!this.nom().trim() || !email || !this.telephone().trim()) return this.erreur.set('Remplissez votre nom, votre e-mail et votre téléphone.');
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return this.erreur.set('Adresse e-mail invalide.');
-      if (!/^\d{8,12}$/.test(this.telephone().replace(/[\s.+-]/g, ''))) return this.erreur.set('Numéro de téléphone invalide (8 chiffres au moins).');
-      if (this.motDePasse().length < 6) return this.erreur.set('Le mot de passe doit contenir au moins 6 caractères.');
+      if (!this.nom().trim() || !email || !this.telephone().trim())
+        return this.erreur.set('Remplissez votre nom, votre e-mail et votre téléphone.');
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+        return this.erreur.set('Adresse e-mail invalide.');
+      if (!/^\d{8,12}$/.test(this.telephone().replace(/[\s.+-]/g, '')))
+        return this.erreur.set('Numéro de téléphone invalide (8 chiffres au moins).');
+      if (this.motDePasse().length < 6)
+        return this.erreur.set('Le mot de passe doit contenir au moins 6 caractères.');
     } else if (!email || !this.motDePasse()) {
       return this.erreur.set('Saisissez votre e-mail et votre mot de passe.');
     }
     this.envoi.set(true);
-    const appel = this.mode() === 'inscription'
-      ? this.api.inscriptionClient({ nom: this.nom().trim(), email, telephone: this.telephone().trim(), motDePasse: this.motDePasse() })
-      : this.api.connexion(email, this.motDePasse());
+    const appel =
+      this.mode() === 'inscription'
+        ? this.api.inscriptionClient({
+            nom: this.nom().trim(),
+            email,
+            telephone: this.telephone().trim(),
+            motDePasse: this.motDePasse(),
+          })
+        : this.api.connexion(email, this.motDePasse());
     appel.subscribe({
       next: (s) => {
         if (s.role !== 'CLIENT') {
-          this.erreur.set('Ce compte appartient à l’espace pro : connectez-vous depuis « Espace pro ».');
+          this.erreur.set(
+            'Ce compte appartient à l’espace pro : connectez-vous depuis « Espace pro ».',
+          );
           this.envoi.set(false);
           return;
         }
         this.auth.ouvrir(s);
         const cible = this.retour();
         // Retour uniquement vers une page de Dourek (jamais vers un autre site).
-        this.router.navigateByUrl(cible && cible.startsWith('/') && !cible.startsWith('//') ? cible : '/');
+        this.router.navigateByUrl(
+          cible && cible.startsWith('/') && !cible.startsWith('//') ? cible : '/',
+        );
       },
-      error: (e) => { this.erreur.set(messageErreur(e)); this.envoi.set(false); },
+      error: (e) => {
+        this.erreur.set(messageErreur(e));
+        this.envoi.set(false);
+      },
     });
   }
 

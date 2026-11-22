@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { forkJoin, switchMap } from 'rxjs';
+import { EMPTY, catchError, forkJoin, switchMap } from 'rxjs';
 import { ApiService, messageErreur } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { heure, minutesDepuis } from '../../core/format';
@@ -25,11 +25,14 @@ export class TableauDeBord {
 
   protected readonly stats = signal<Statistiques | null>(null);
   protected readonly etat = signal<EtatFile | null>(null);
+  protected readonly erreur = signal<string | null>(null);
   protected readonly aujourdhui = new Date();
   protected readonly heure = heure;
 
   protected readonly heureActuelle = new Date().getHours();
-  protected readonly maxAffluence = computed(() => Math.max(1, ...(this.stats()?.affluence.map((a) => a.nombre) ?? [1])));
+  protected readonly maxAffluence = computed(() =>
+    Math.max(1, ...(this.stats()?.affluence.map((a) => a.nombre) ?? [1])),
+  );
   protected readonly lignes = computed(() => {
     const e = this.etat();
     const s = this.stats();
@@ -39,11 +42,23 @@ export class TableauDeBord {
 
   constructor() {
     const s = this.auth.session()!;
-    inject(TempsReelService).file(s.etablissementId!)
-      .pipe(switchMap(() => forkJoin([this.api.statistiques(), this.api.etatFile()])), takeUntilDestroyed())
-      .subscribe({
-        next: ([st, et]) => { this.stats.set(st); this.etat.set(et); },
-        error: (e) => this.toast.afficher(messageErreur(e), true),
+    inject(TempsReelService)
+      .file(s.etablissementId!)
+      .pipe(
+        switchMap(() =>
+          forkJoin([this.api.statistiques(), this.api.etatFile()]).pipe(
+            catchError((e) => {
+              this.erreur.set(messageErreur(e));
+              return EMPTY;
+            }),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe(([st, et]) => {
+        this.stats.set(st);
+        this.etat.set(et);
+        this.erreur.set(null);
       });
   }
 
@@ -51,25 +66,36 @@ export class TableauDeBord {
     const e = this.etat();
     if (!e) return;
     this.api.ouverture(!e.fileOuverte).subscribe({
-      next: (x) => { this.etat.set(x); this.toast.afficher(x.fileOuverte ? 'File rouverte.' : 'File en pause : plus de nouveaux tickets.'); },
+      next: (x) => {
+        this.etat.set(x);
+        this.toast.afficher(
+          x.fileOuverte ? 'File rouverte.' : 'File en pause : plus de nouveaux tickets.',
+        );
+      },
       error: (err) => this.toast.afficher(messageErreur(err), true),
     });
   }
 
   statut(t: TicketLigne, i: number): { texte: string; cls: string } {
     switch (t.statut) {
-      case 'APPELE': return { texte: 'En service · ' + (t.poste?.split(' · ')[0] ?? ''), cls: 'ok' };
-      case 'SERVI': return { texte: 'Servi', cls: '' };
-      case 'ABSENT': return { texte: 'Absent', cls: 'danger' };
+      case 'APPELE':
+        return { texte: 'En service · ' + (t.poste?.split(' · ')[0] ?? ''), cls: 'ok' };
+      case 'SERVI':
+        return { texte: 'Servi', cls: '' };
+      case 'ABSENT':
+        return { texte: 'Absent', cls: 'danger' };
       default:
         if (i === (this.etat()?.enCours.length ?? 0)) return { texte: 'Suivant', cls: 'primary' };
-        return t.prioritaire ? { texte: 'Prioritaire', cls: 'warn' } : { texte: 'En attente', cls: '' };
+        return t.prioritaire
+          ? { texte: 'Prioritaire', cls: 'warn' }
+          : { texte: 'En attente', cls: '' };
     }
   }
 
   attente(t: TicketLigne) {
     if (t.statut === 'EN_ATTENTE') return `${minutesDepuis(t.creeLe)} min`;
-    if (t.appeleLe) return `${Math.max(0, Math.round((new Date(t.appeleLe).getTime() - new Date(t.creeLe).getTime()) / 60000))} min`;
+    if (t.appeleLe)
+      return `${Math.max(0, Math.round((new Date(t.appeleLe).getTime() - new Date(t.creeLe).getTime()) / 60000))} min`;
     return '—';
   }
 }

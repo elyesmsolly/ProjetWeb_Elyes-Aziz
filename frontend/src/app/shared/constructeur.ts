@@ -1,12 +1,34 @@
-import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPlaceholder, CdkDragPreview, CdkDropList, CdkDropListGroup, copyArrayItem, moveItemInArray } from '@angular/cdk/drag-drop';
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, signal } from '@angular/core';
+import {
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragHandle,
+  CdkDragPlaceholder,
+  CdkDragPreview,
+  CdkDropList,
+  CdkDropListGroup,
+  copyArrayItem,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  model,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, messageErreur } from '../core/api.service';
 import { ChampFormulaire, FormulairePropose, TypeChamp } from '../core/models';
 import { Champ } from './champ';
 import { Icon } from './icon';
 
-interface Outil { type: TypeChamp; libelle: string; icone: string; }
+interface Outil {
+  type: TypeChamp;
+  libelle: string;
+  icone: string;
+}
 
 export const OUTILS: Outil[] = [
   { type: 'TEXTE', libelle: 'Texte court', icone: 'text' },
@@ -49,7 +71,17 @@ const EXEMPLES_IA = [
 @Component({
   selector: 'app-constructeur',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder, CdkDragPreview, FormsModule, Icon, Champ],
+  imports: [
+    CdkDropListGroup,
+    CdkDropList,
+    CdkDrag,
+    CdkDragHandle,
+    CdkDragPlaceholder,
+    CdkDragPreview,
+    FormsModule,
+    Icon,
+    Champ,
+  ],
   templateUrl: './constructeur.html',
   styleUrl: './constructeur.css',
 })
@@ -66,7 +98,9 @@ export class Constructeur {
   protected readonly selection = signal<string | null>(null);
   protected readonly reponsesApercu = signal<Record<string, unknown>>({});
   protected readonly annonce = signal('');
-  protected readonly selectionne = computed(() => this.champs().find((c) => c.cle === this.selection()) ?? null);
+  protected readonly selectionne = computed(
+    () => this.champs().find((c) => c.cle === this.selection()) ?? null,
+  );
 
   // ---- création par l'IA
   protected readonly exemplesIa = EXEMPLES_IA;
@@ -74,7 +108,11 @@ export class Constructeur {
   protected readonly generation = signal(false);
   protected readonly erreurIa = signal<string | null>(null);
   /** Dernière proposition appliquée, avec le formulaire d'avant pour pouvoir l'annuler. */
-  protected readonly proposition = signal<{ source: FormulairePropose['source']; ajoutes: number; avant: ChampFormulaire[] } | null>(null);
+  protected readonly proposition = signal<{
+    source: FormulairePropose['source'];
+    ajoutes: number;
+    avant: ChampFormulaire[];
+  } | null>(null);
 
   proposer() {
     const description = this.description().trim();
@@ -85,14 +123,23 @@ export class Constructeur {
       next: (p) => {
         const ajoutes = p.champs.filter((c) => !VERROUILLES.has(c.cle)).length;
         // On garde le formulaire du tout premier essai : « Annuler » y revient même après plusieurs propositions.
-        this.proposition.set({ source: p.source, ajoutes, avant: this.proposition()?.avant ?? this.champs() });
+        this.proposition.set({
+          source: p.source,
+          ajoutes,
+          avant: this.proposition()?.avant ?? this.champs(),
+        });
         this.champs.set(p.champs);
         this.selection.set(null);
         this.reponsesApercu.set({});
         this.generation.set(false);
-        this.annonce.set(`Formulaire proposé : ${ajoutes} champ${ajoutes > 1 ? 's' : ''} en plus du nom et du téléphone.`);
+        this.annonce.set(
+          `Formulaire proposé : ${ajoutes} champ${ajoutes > 1 ? 's' : ''} en plus du nom et du téléphone.`,
+        );
       },
-      error: (e) => { this.erreurIa.set(messageErreur(e)); this.generation.set(false); },
+      error: (e) => {
+        this.erreurIa.set(messageErreur(e));
+        this.generation.set(false);
+      },
     });
   }
 
@@ -106,8 +153,12 @@ export class Constructeur {
     this.annonce.set('Proposition annulée : votre formulaire précédent est rétabli.');
   }
 
-  verrouille(c: ChampFormulaire) { return VERROUILLES.has(c.cle); }
-  outil(type: TypeChamp) { return OUTILS.find((o) => o.type === type)!; }
+  verrouille(c: ChampFormulaire) {
+    return VERROUILLES.has(c.cle);
+  }
+  outil(type: TypeChamp) {
+    return OUTILS.find((o) => o.type === type)!;
+  }
 
   /** La palette n'accepte aucun dépôt : on ne fait qu'y prendre des champs. */
   readonly jamais = () => false;
@@ -130,7 +181,10 @@ export class Constructeur {
   /** Après un glisser, le navigateur envoie aussi un clic : on l'ignore. */
   protected glisse = false;
   clicOutil(type: TypeChamp) {
-    if (this.glisse) { this.glisse = false; return; }
+    if (this.glisse) {
+      this.glisse = false;
+      return;
+    }
     this.ajouter(type);
   }
 
@@ -168,8 +222,18 @@ export class Constructeur {
   }
 
   dupliquer(c: ChampFormulaire) {
-    const copie = { ...c, cle: 'champ_' + Math.random().toString(36).slice(2, 8), label: c.label + ' (copie)', options: [...c.options] };
-    this.champs.update((l) => { const i = l.indexOf(c); const n = [...l]; n.splice(i + 1, 0, copie); return n; });
+    const copie = {
+      ...c,
+      cle: 'champ_' + Math.random().toString(36).slice(2, 8),
+      label: c.label + ' (copie)',
+      options: [...c.options],
+    };
+    this.champs.update((l) => {
+      const i = l.indexOf(c);
+      const n = [...l];
+      n.splice(i + 1, 0, copie);
+      return n;
+    });
     this.selection.set(copie.cle);
   }
 
@@ -180,5 +244,7 @@ export class Constructeur {
     this.annonce.set(`Champ « ${c.label} » supprimé.`);
   }
 
-  repondreApercu(cle: string, v: unknown) { this.reponsesApercu.update((r) => ({ ...r, [cle]: v })); }
+  repondreApercu(cle: string, v: unknown) {
+    this.reponsesApercu.update((r) => ({ ...r, [cle]: v }));
+  }
 }
